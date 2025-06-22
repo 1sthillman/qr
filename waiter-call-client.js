@@ -32,53 +32,79 @@ async function initWaiterCallPage() {
         // Supabase bağlantısını oluştur
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        // Restoran bilgilerini al
-        const { data: restaurantData, error: restaurantError } = await supabase
-            .from('restaurants')
-            .select('name')
-            .eq('id', restaurantId)
-            .single();
+        // Hata ayıklama için
+        console.log('Supabase bağlantısı kuruldu');
+        console.log('Restoran ID:', restaurantId);
+        console.log('Masa Numarası:', tableNumber);
+        
+        try {
+            // Restoran bilgilerini al
+            const { data: restaurantData, error: restaurantError } = await supabase
+                .from('restaurants')
+                .select('*')
+                .eq('id', restaurantId)
+                .single();
+                
+            console.log('Restoran sorgusu sonucu:', { data: restaurantData, error: restaurantError });
+                
+            if (restaurantError) {
+                console.error('Restoran bilgisi alınamadı:', restaurantError);
+                showError('Restoran bilgisi bulunamadı. Hata: ' + restaurantError.message);
+                return;
+            }
             
-        if (restaurantError || !restaurantData) {
-            console.error('Restoran bilgisi alınamadı:', restaurantError);
-            showError('Restoran bilgisi bulunamadı.');
-            return;
-        }
-        
-        // Masa bilgisini al
-        const { data: tableData, error: tableError } = await supabase
-            .from('tables')
-            .select('id')
-            .eq('restaurant_id', restaurantId)
-            .eq('number', parseInt(tableNumber))
-            .single();
+            if (!restaurantData) {
+                console.error('Restoran bulunamadı');
+                showError('Restoran bilgisi bulunamadı.');
+                return;
+            }
             
-        if (tableError || !tableData) {
-            console.error('Masa bilgisi alınamadı:', tableError);
-            showError('Masa bilgisi bulunamadı.');
-            return;
+            // Masa bilgisini al
+            const { data: tableData, error: tableError } = await supabase
+                .from('tables')
+                .select('*')
+                .eq('restaurant_id', restaurantId)
+                .eq('number', parseInt(tableNumber))
+                .single();
+                
+            console.log('Masa sorgusu sonucu:', { data: tableData, error: tableError });
+                
+            if (tableError) {
+                console.error('Masa bilgisi alınamadı:', tableError);
+                showError('Masa bilgisi bulunamadı. Hata: ' + tableError.message);
+                return;
+            }
+            
+            if (!tableData) {
+                console.error('Masa bulunamadı');
+                showError('Masa bilgisi bulunamadı.');
+                return;
+            }
+            
+            // Global değişkenleri güncelle
+            tableId = tableData.id;
+            
+            // Sayfa içeriğini güncelle
+            document.getElementById('restaurantName').textContent = restaurantData.name;
+            document.getElementById('tableNumber').textContent = tableNumber;
+            
+            // Yükleme ekranını gizle, ana sayfayı göster
+            document.getElementById('loadingPage').classList.add('hidden');
+            document.getElementById('qrPage').classList.remove('hidden');
+            
+            // Garson çağırma butonuna event listener ekle
+            document.getElementById('callWaiterButton').addEventListener('click', callWaiter);
+            
+            // Realtime bağlantıyı kur
+            setupRealtimeConnection();
+        } catch (innerError) {
+            console.error('Veri çekme hatası:', innerError);
+            showError('Veri çekilirken bir hata oluştu: ' + innerError.message);
         }
-        
-        // Global değişkenleri güncelle
-        tableId = tableData.id;
-        
-        // Sayfa içeriğini güncelle
-        document.getElementById('restaurantName').textContent = restaurantData.name;
-        document.getElementById('tableNumber').textContent = tableNumber;
-        
-        // Yükleme ekranını gizle, ana sayfayı göster
-        document.getElementById('loadingPage').classList.add('hidden');
-        document.getElementById('qrPage').classList.remove('hidden');
-        
-        // Garson çağırma butonuna event listener ekle
-        document.getElementById('callWaiterButton').addEventListener('click', callWaiter);
-        
-        // Realtime bağlantıyı kur
-        setupRealtimeConnection();
         
     } catch (error) {
         console.error('Sayfa başlatma hatası:', error);
-        showError('Bir hata oluştu. Lütfen sayfayı yenileyin.');
+        showError('Bir hata oluştu. Lütfen sayfayı yenileyin. Hata: ' + error.message);
     }
 }
 
