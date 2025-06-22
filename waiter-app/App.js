@@ -19,8 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 // Supabase bağlantı bilgileri
 // NOT: Gerçek uygulamada bu bilgiler environment variables ile yönetilmeli
-const SUPABASE_URL = 'https://egcklzfiyxxnvyxwoowq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnY2tsemZpeXh4bnZ5eHdvb3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NjQxMTcsImV4cCI6MjA2NDA0MDExN30.dfRQv3lYFCaI1T5ydOw4HyoEJ0I1wOSIUcG8ueEbxKQ';
+const SUPABASE_URL = 'SUPABASE_URL_BURAYA'; // Supabase Project URL
+const SUPABASE_ANON_KEY = 'SUPABASE_ANON_KEY_BURAYA'; // Supabase anon public key
 
 // Bildirim ayarları
 Notifications.setNotificationHandler({
