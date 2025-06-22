@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#FF6B35">
+    <meta name="description" content="Restoran Garson Çağır Servisi">
+    <title>Garsonu Çağır</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#FF6B35',secondary:'#3A86FF'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="qrPage" class="hidden">
+        <div class="flex flex-col items-center justify-center p-6 text-center min-h-screen">
+            <div class="w-full max-w-md">
+                <div class="bg-white rounded-lg shadow-md p-8">
+                    <div class="mb-6">
+                        <i class="ri-restaurant-line text-5xl text-primary"></i>
+                        <h1 class="text-2xl font-semibold mt-2">Masa <span id="tableNumber">0</span></h1>
+                        <p class="text-gray-600 mt-2">İyi günler! Herhangi bir ihtiyacınız olduğunda lütfen garsonu çağırın.</p>
+                    </div>
+
+                    <button id="callWaiterButton" class="w-full bg-primary text-white py-4 rounded-button font-medium hover:bg-opacity-90 transition-all text-lg">
+                        <i class="ri-user-voice-line mr-2"></i>
+                        Garsonu Çağır
+                    </button>
+
+                    <!-- Uyarı ve bildirim alanları -->
+                    <div id="errorAlert" class="mt-4 p-3 bg-red-100 text-red-700 rounded-lg hidden">
+                        Bir hata oluştu. Lütfen tekrar deneyin.
+                    </div>
+                    
+                    <div id="successAlert" class="mt-4 p-3 bg-green-100 text-green-700 rounded-lg hidden">
+                        Garson çağrınız alındı. En kısa sürede sizinle ilgileneceğiz.
+                    </div>
+                    
+                    <div id="waiterResponseAlert" class="mt-4 p-3 bg-blue-100 text-blue-700 rounded-lg hidden">
+                        Garsonunuz geliyor.
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center text-sm text-gray-500">
+                    <p>Masanızın QR kodunu tekrar okutarak bu sayfaya ulaşabilirsiniz.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingPage" class="flex flex-col items-center justify-center p-6 text-center min-h-screen">
+        <div class="w-16 h-16 border-t-4 border-primary border-solid rounded-full animate-spin mb-4"></div>
+        <p class="text-gray-600">Yükleniyor...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/qr-handler.js"></script>
+</body>
+</html> 

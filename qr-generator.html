@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Kod Oluşturucu</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#FF6B35',secondary:'#3A86FF'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <div class="text-center mb-8">
+            <i class="ri-qr-code-line text-5xl text-primary"></i>
+            <h1 class="text-3xl font-bold mt-2">QR Kod Oluşturucu</h1>
+            <p class="text-gray-600 mt-2">Restoranınız için masa QR kodları oluşturun</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Restoran Bilgileri</h2>
+            
+            <div class="mb-4">
+                <label for="restaurantId" class="block text-gray-700 font-medium mb-2">Restoran ID</label>
+                <input type="text" id="restaurantId" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Örn: ABC123">
+            </div>
+            
+            <div class="mb-4">
+                <label for="restaurantName" class="block text-gray-700 font-medium mb-2">Restoran Adı</label>
+                <input type="text" id="restaurantName" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Örn: Lezzet Dünyası">
+            </div>
+            
+            <div class="mb-4">
+                <label for="tableCount" class="block text-gray-700 font-medium mb-2">Masa Sayısı</label>
+                <input type="number" id="tableCount" min="1" max="100" value="10" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            
+            <div class="mb-4">
+                <label for="baseUrl" class="block text-gray-700 font-medium mb-2">QR URL Adresi</label>
+                <input type="text" id="baseUrl" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="https://sizin-adiniz.github.io/waiter-call" placeholder="https://sizin-adiniz.github.io/waiter-call">
+            </div>
+            
+            <button id="generateButton" class="w-full bg-primary text-white py-3 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                <i class="ri-qr-code-line mr-2"></i>
+                QR Kodları Oluştur
+            </button>
+        </div>
+        
+        <div id="qrCodesContainer" class="hidden">
+            <h2 class="text-xl font-semibold mb-4">Oluşturulan QR Kodlar</h2>
+            
+            <div class="mb-4">
+                <button id="printAllButton" class="bg-secondary text-white px-4 py-2 rounded-button font-medium hover:bg-opacity-90 transition-all mr-2">
+                    <i class="ri-printer-line mr-1"></i>
+                    Tümünü Yazdır
+                </button>
+                
+                <button id="downloadAllButton" class="bg-green-600 text-white px-4 py-2 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                    <i class="ri-download-line mr-1"></i>
+                    Tümünü İndir (ZIP)
+                </button>
+            </div>
+            
+            <div id="qrCodesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- QR kodlar buraya eklenecek -->
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script>
+        // Supabase bağlantı bilgileri
+        const SUPABASE_URL = 'https://egcklzfiyxxnvyxwoowq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnY2tsemZpeXh4bnZ5eHdvb3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NjQxMTcsImV4cCI6MjA2NDA0MDExN30.dfRQv3lYFCaI1T5ydOw4HyoEJ0I1wOSIUcG8ueEbxKQ';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const generateButton = document.getElementById('generateButton');
+            const printAllButton = document.getElementById('printAllButton');
+            const downloadAllButton = document.getElementById('downloadAllButton');
+            
+            generateButton.addEventListener('click', generateQRCodes);
+            printAllButton.addEventListener('click', printAllQRCodes);
+            downloadAllButton.addEventListener('click', downloadAllQRCodes);
+        });
+        
+        // QR kodları oluştur
+        async function generateQRCodes() {
+            const restaurantId = document.getElementById('restaurantId').value.trim();
+            const restaurantName = document.getElementById('restaurantName').value.trim();
+            const tableCount = parseInt(document.getElementById('tableCount').value);
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            
+            if (!restaurantId || !restaurantName || isNaN(tableCount) || !baseUrl) {
+                alert('Lütfen tüm alanları doldurun.');
+                return;
+            }
+            
+            if (tableCount < 1 || tableCount > 100) {
+                alert('Masa sayısı 1-100 arasında olmalıdır.');
+                return;
+            }
+            
+            try {
+                // Restoran kaydını kontrol et veya oluştur
+                const { data: existingRestaurant, error: checkError } = await supabase
+                    .from('restaurants')
+                    .select('id')
+                    .eq('id', restaurantId)
+                    .single();
+                    
+                if (checkError && checkError.code !== 'PGRST116') {
+                    throw checkError;
+                }
+                
+                if (!existingRestaurant) {
+                    // Restoran kaydı oluştur
+                    const { error: createError } = await supabase
+                        .from('restaurants')
+                        .insert({
+                            id: restaurantId,
+                            name: restaurantName,
+                            plan: 'free'
+                        });
+                        
+                    if (createError) throw createError;
+                }
+                
+                // QR kodları oluştur
+                const qrCodesList = document.getElementById('qrCodesList');
+                qrCodesList.innerHTML = '';
+                
+                for (let i = 1; i <= tableCount; i++) {
+                    // Masa kaydını kontrol et veya oluştur
+                    const { data: existingTable, error: tableCheckError } = await supabase
+                        .from('tables')
+                        .select('id')
+                        .eq('restaurant_id', restaurantId)
+                        .eq('number', i)
+                        .single();
+                        
+                    if (tableCheckError && tableCheckError.code !== 'PGRST116') {
+                        console.warn(`Masa ${i} kontrolünde hata:`, tableCheckError);
+                    }
+                    
+                    if (!existingTable) {
+                        // Masa kaydı oluştur
+                        const { error: tableCreateError } = await supabase
+                            .from('tables')
+                            .insert({
+                                restaurant_id: restaurantId,
+                                number: i
+                            });
+                            
+                        if (tableCreateError) {
+                            console.error(`Masa ${i} oluşturulurken hata:`, tableCreateError);
+                        }
+                    }
+                    
+                    // QR kod URL'i
+                    const qrUrl = `${baseUrl}?restaurant_id=${restaurantId}&table_id=${i}`;
+                    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+                    
+                    // QR kod kartı oluştur
+                    const qrCard = document.createElement('div');
+                    qrCard.className = 'bg-white rounded-lg shadow-md p-4 text-center';
+                    qrCard.innerHTML = `
+                        <p class="text-lg font-semibold mb-2">${restaurantName}</p>
+                        <p class="text-md font-medium mb-3">Masa ${i}</p>
+                        <div class="bg-white p-2 border rounded-lg inline-block mb-3">
+                            <img src="${qrImageUrl}" alt="Masa ${i} QR Kodu" class="w-40 h-40">
+                        </div>
+                        <div class="flex justify-center">
+                            <button class="print-button bg-primary text-white px-3 py-1 rounded-button text-sm mr-2" data-table="${i}">
+                                <i class="ri-printer-line mr-1"></i>
+                                Yazdır
+                            </button>
+                            <button class="download-button bg-green-600 text-white px-3 py-1 rounded-button text-sm" data-table="${i}" data-url="${qrImageUrl}">
+                                <i class="ri-download-line mr-1"></i>
+                                İndir
+                            </button>
+                        </div>
+                    `;
+                    
+                    qrCodesList.appendChild(qrCard);
+                }
+                
+                // QR kodlar bölümünü göster
+                document.getElementById('qrCodesContainer').classList.remove('hidden');
+                
+                // Tek tek yazdırma butonlarına event listener ekle
+                document.querySelectorAll('.print-button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const tableNumber = button.getAttribute('data-table');
+                        printQRCode(restaurantName, tableNumber, `${baseUrl}?restaurant_id=${restaurantId}&table_id=${tableNumber}`);
+                    });
+                });
+                
+                // Tek tek indirme butonlarına event listener ekle
+                document.querySelectorAll('.download-button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const tableNumber = button.getAttribute('data-table');
+                        const imageUrl = button.getAttribute('data-url');
+                        downloadQRCode(imageUrl, `${restaurantName}_Masa_${tableNumber}.png`);
+                    });
+                });
+                
+            } catch (error) {
+                console.error('QR kod oluşturma hatası:', error);
+                alert('QR kodlar oluşturulurken bir hata oluştu.');
+            }
+        }
+        
+        // Tek bir QR kodu yazdır
+        function printQRCode(restaurantName, tableNumber, qrUrl) {
+            const printWindow = window.open('', '_blank');
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Masa ${tableNumber} QR Kodu</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; }
+                        .qr-container { margin: 20px auto; }
+                        h1 { font-size: 24px; margin-bottom: 10px; }
+                        p { font-size: 16px; margin-bottom: 20px; }
+                        .restaurant-name { font-size: 28px; font-weight: bold; margin-bottom: 5px; }
+                        .table-info { font-size: 22px; margin: 15px 0; }
+                        .instructions { font-size: 18px; margin: 15px 0 25px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="qr-container">
+                        <p class="restaurant-name">${restaurantName}</p>
+                        <h1 class="table-info">Masa ${tableNumber}</h1>
+                        <p class="instructions">Garsonu çağırmak için QR kodu tarayın</p>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}" alt="QR Kod">
+                        <p>${qrUrl}</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.focus();
+            
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+        
+        // Tüm QR kodları yazdır
+        function printAllQRCodes() {
+            const restaurantId = document.getElementById('restaurantId').value.trim();
+            const restaurantName = document.getElementById('restaurantName').value.trim();
+            const tableCount = parseInt(document.getElementById('tableCount').value);
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            
+            if (!restaurantId || !restaurantName || isNaN(tableCount) || !baseUrl) {
+                alert('Lütfen tüm alanları doldurun.');
+                return;
+            }
+            
+            const printWindow = window.open('', '_blank');
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${restaurantName} - Tüm QR Kodlar</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; }
+                        .qr-container { 
+                            display: inline-block; 
+                            width: 45%; 
+                            margin: 10px;
+                            text-align: center;
+                            page-break-inside: avoid;
+                        }
+                        h1 { font-size: 24px; text-align: center; margin-bottom: 20px; }
+                        .restaurant-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+                        .table-info { font-size: 18px; margin: 10px 0; }
+                        .instructions { font-size: 14px; margin: 10px 0; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${restaurantName} - QR Kodlar</h1>
+            `);
+            
+            for (let i = 1; i <= tableCount; i++) {
+                const qrUrl = `${baseUrl}?restaurant_id=${restaurantId}&table_id=${i}`;
+                
+                printWindow.document.write(`
+                    <div class="qr-container">
+                        <p class="restaurant-name">${restaurantName}</p>
+                        <p class="table-info">Masa ${i}</p>
+                        <p class="instructions">Garsonu çağırmak için QR kodu tarayın</p>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}" alt="Masa ${i} QR Kodu">
+                    </div>
+                `);
+            }
+            
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+        
+        // Tek bir QR kodu indir
+        async function downloadQRCode(imageUrl, fileName) {
+            try {
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                saveAs(blob, fileName);
+            } catch (error) {
+                console.error('QR kod indirme hatası:', error);
+                alert('QR kod indirilirken bir hata oluştu.');
+            }
+        }
+        
+        // Tüm QR kodları ZIP olarak indir
+        async function downloadAllQRCodes() {
+            const restaurantId = document.getElementById('restaurantId').value.trim();
+            const restaurantName = document.getElementById('restaurantName').value.trim();
+            const tableCount = parseInt(document.getElementById('tableCount').value);
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            
+            if (!restaurantId || !restaurantName || isNaN(tableCount) || !baseUrl) {
+                alert('Lütfen tüm alanları doldurun.');
+                return;
+            }
+            
+            try {
+                const zip = new JSZip();
+                const promises = [];
+                
+                for (let i = 1; i <= tableCount; i++) {
+                    const qrUrl = `${baseUrl}?restaurant_id=${restaurantId}&table_id=${i}`;
+                    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`;
+                    
+                    const promise = fetch(qrImageUrl)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            zip.file(`${restaurantName}_Masa_${i}.png`, blob);
+                        });
+                        
+                    promises.push(promise);
+                }
+                
+                await Promise.all(promises);
+                
+                const content = await zip.generateAsync({ type: 'blob' });
+                saveAs(content, `${restaurantName}_QR_Kodlar.zip`);
+                
+            } catch (error) {
+                console.error('QR kodları toplu indirme hatası:', error);
+                alert('QR kodlar indirilirken bir hata oluştu.');
+            }
+        }
+    </script>
+</body>
+</html> 
