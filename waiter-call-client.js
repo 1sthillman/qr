@@ -1,7 +1,7 @@
 // Supabase bağlantı bilgileri
 // NOT: Gerçek uygulamada bu bilgiler environment variables ile yönetilmeli
-const SUPABASE_URL = 'SUPABASE_URL_BURAYA'; // Supabase Project URL
-const SUPABASE_ANON_KEY = 'SUPABASE_ANON_KEY_BURAYA'; // Supabase anon public key
+const SUPABASE_URL = 'https://wihdzkvgttfwsiijxidy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpaGR6a3ZndHRmd3NpaWp4aWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2MzA0MjIsImV4cCI6MjA2NjIwNjQyMn0.Cpn6y7ybyLA3uL-bjvsxPKoIw-J7I6eTE5cPGnBjOo4';
 
 // Global değişkenler
 let supabase = null;
