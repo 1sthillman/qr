@@ -8,7 +8,8 @@ import {
   FlatList, 
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
+  TextInput
 } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +17,7 @@ import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import 'react-native-url-polyfill/auto';
 
 // Supabase bağlantı bilgileri
 // NOT: Gerçek uygulamada bu bilgiler environment variables ile yönetilmeli
@@ -204,8 +206,10 @@ export default function App() {
   // Ses çalma fonksiyonu
   const playSound = async () => {
     try {
+      // Sistemin varsayılan bildirim sesini kullan
       const { sound: newSound } = await Audio.Sound.createAsync(
-        require('./assets/notification.mp3')
+        { uri: 'system' },
+        { shouldPlay: true }
       );
       setSound(newSound);
       await newSound.playAsync();
@@ -351,8 +355,7 @@ export default function App() {
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Restoran ID</Text>
-            <TextInput
-              style={styles.input}
+            <CustomTextInput
               placeholder="Restoran ID (örn: ABC123)"
               value={restaurantId}
               onChangeText={setRestaurantId}
@@ -362,8 +365,7 @@ export default function App() {
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Şifre</Text>
-            <TextInput
-              style={styles.input}
+            <CustomTextInput
               placeholder="Şifreniz"
               value={password}
               onChangeText={setPassword}
@@ -448,7 +450,7 @@ export default function App() {
 }
 
 // TextInput bileşeni
-const TextInput = ({ style, ...props }) => {
+const CustomTextInput = ({ style, ...props }) => {
   return (
     <View style={[styles.textInputContainer, style]}>
       <View style={styles.textInputInner}>
@@ -459,15 +461,14 @@ const TextInput = ({ style, ...props }) => {
         )}
         <View style={{ flex: 1 }}>
           <View style={styles.textInputWrapper}>
-            <input
+            <TextInput
               {...props}
               style={{
-                outline: 'none',
-                border: 'none',
                 fontSize: 16,
-                width: '100%',
-                backgroundColor: 'transparent',
                 color: '#333',
+                flex: 1,
+                padding: 0,
+                margin: 0,
               }}
             />
           </View>
