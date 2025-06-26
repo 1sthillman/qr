@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#151522">
+    <title>Garson Çağır</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B35',
+                        secondary: '#1a1a25',
+                        'glass-bg': 'rgba(26,26,37,0.8)',
+                        'glass-border': 'rgba(255,255,255,0.08)',
+                    },
+                    backdropBlur: {
+                        glass: '10px',
+                    },
+                    borderRadius: {
+                        button: '8px'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <style>
+        /* Bu sayfaya özgü stiller */
+        .call-button {
+            height: 200px;
+            transform-style: preserve-3d;
+            transform: perspective(1000px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .call-button.active {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .call-button.active .wave {
+            background-image: linear-gradient(to bottom, rgba(239, 68, 68, 0.3), transparent);
+            animation-duration: 6s;
+        }
+
+        .call-button .button-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .call-button.active .button-icon {
+            animation: shake 0.5s infinite;
+        }
+
+        .active-label {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(239, 68, 68, 0.9);
+            color: white;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            animation: pulse-small 1.5s infinite;
+        }
+        
+        .table-info {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(5px); }
+            50% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        /* Durum göstergesi */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        .status-idle {
+            background-color: #38bdf8;
+        }
+        
+        .status-calling {
+            background-color: #ef4444;
+            animation: pulse-small 1.5s infinite;
+        }
+        
+        .status-serving {
+            background-color: #10b981;
+        }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen font-inter">
+    <div class="min-h-screen flex flex-col bg-gradient-to-b from-[#151525]/80 to-black/80">
+        <header class="p-5 border-b border-gray-800 flex justify-between items-center bg-black bg-opacity-60 backdrop-blur-lg">
+            <div class="flex items-center">
+                <i class="ri-restaurant-line text-primary text-3xl mr-3"></i>
+                <h2 class="text-2xl font-bold text-white">Masa <span id="tableNumber">5</span></h2>
+            </div>
+            <div id="statusDisplay" class="flex items-center text-sm">
+                <span class="status-indicator status-idle"></span>
+                <span id="statusText">Boş</span>
+            </div>
+        </header>
+
+        <main class="flex-1 flex flex-col p-6">
+            <div class="bg-glass-bg backdrop-blur-glass border border-glass-border rounded-xl p-5 mb-6 text-center table-info">
+                <h3 id="restaurantName" class="text-lg font-medium mb-2">Restaurant Adı</h3>
+                <p class="text-gray-400 text-sm">Garson çağırmak için aşağıdaki butona basın</p>
+            </div>
+            
+            <div class="flex-1 flex justify-center items-center">
+                <button id="callWaiterBtn" class="call-button w-full max-w-xs p-6 flex flex-col justify-center items-center rounded-xl bg-glass-bg backdrop-blur-glass border border-glass-border">
+                    <div class="relative z-10">
+                        <i class="ri-user-voice-line button-icon text-primary"></i>
+                        <div id="callButtonText" class="text-xl font-semibold">GARSON ÇAĞIR</div>
+                    </div>
+                    
+                    <!-- Dalga animasyonları -->
+                    <div class="wave-container absolute inset-0 z-0">
+                        <div class="wave wave1"></div>
+                        <div class="wave wave2"></div>
+                        <div class="wave wave3"></div>
+                    </div>
+                    
+                    <!-- Aktif etiket, sadece aktif olduğunda görünecek -->
+                    <div id="activeLabel" class="active-label hidden">
+                        <i class="ri-alarm-warning-line mr-1"></i> ÇAĞRILIYOR
+                    </div>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast bildirim alanı -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+
+    <!-- Cordova -->
+    <script src="cordova.js"></script>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Customer JS -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Supabase bağlantısı
+        const SUPABASE_URL = 'https://wihdzkvgttfwsiijxidy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpaGR6a3ZndHRmd3NpaWp4aWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2MzA0MjIsImV4cCI6MjA2NjIwNjQyMn0.Cpn6y7ybyLA3uL-bjvsxPKoIw-J7I6eTE5cPGnBjOo4';
+        
+        let supabase;
+        let supabaseChannel;
+        let tableId = 5; // Varsayılan masa numarası
+        let restaurantId = 'demo'; // Varsayılan restoran ID
+        let isCallActive = false;
+        let currentStatus = 'idle'; // Mevcut masa durumu
+        let tableDbId = null; // Veritabanındaki masa ID'si
+        
+        // URL parametrelerini al
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // GitHub Pages'ten yönlendirilen URL'lerle uyumluluk için
+            // 1sthillman/qr projesinde parametre isimleri farklı olabilir
+            if (urlParams.has('table')) {
+                tableId = urlParams.get('table');
+            } else if (urlParams.has('table_id')) {
+                tableId = urlParams.get('table_id');
+            }
+            
+            if (urlParams.has('restaurant')) {
+                restaurantId = urlParams.get('restaurant');
+            } else if (urlParams.has('restaurant_id')) {
+                restaurantId = urlParams.get('restaurant_id');
+            }
+            
+            // UI güncelle
+            document.getElementById('tableNumber').textContent = tableId;
+            document.getElementById('restaurantName').textContent = `Restaurant ID: ${restaurantId}`;
+            
+            console.log("Masa ID:", tableId);
+            console.log("Restoran ID:", restaurantId);
+        }
+        
+        // Supabase istemcisini başlat
+        function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase başlatıldı');
+                return true;
+            } catch (error) {
+                console.error('Supabase bağlantı hatası:', error);
+                return false;
+            }
+        }
+        
+        // Toast mesaj gösterme
+        function showToast(type, title, message, duration = 3000) {
+            const toastContainer = document.getElementById('toastContainer');
+            if (!toastContainer) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            // Toast ikonu
+            const icon = document.createElement('div');
+            icon.className = 'toast-icon';
+            
+            if (type === 'success') {
+                icon.innerHTML = '<i class="ri-check-line"></i>';
+            } else if (type === 'error') {
+                icon.innerHTML = '<i class="ri-error-warning-line"></i>';
+            }
+            
+            // Toast içeriği
+            const content = document.createElement('div');
+            content.className = 'toast-content';
+            
+            const titleEl = document.createElement('div');
+            titleEl.className = 'toast-title';
+            titleEl.textContent = title;
+            
+            const messageEl = document.createElement('div');
+            messageEl.className = 'toast-message';
+            messageEl.textContent = message;
+            
+            content.appendChild(titleEl);
+            content.appendChild(messageEl);
+            
+            toast.appendChild(icon);
+            toast.appendChild(content);
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, duration);
+        }
+        
+        // Durum göstergesini güncelle
+        function updateStatusIndicator(status) {
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusText = document.getElementById('statusText');
+            
+            // Tüm durum sınıflarını kaldır
+            statusIndicator.classList.remove('status-idle', 'status-calling', 'status-serving');
+            
+            // Yeni duruma göre sınıf ekle
+            if (status === 'calling') {
+                statusIndicator.classList.add('status-calling');
+                statusText.textContent = 'Çağırıyor';
+            } else if (status === 'serving') {
+                statusIndicator.classList.add('status-serving');
+                statusText.textContent = 'Servis';
+            } else {
+                statusIndicator.classList.add('status-idle');
+                statusText.textContent = 'Boş';
+            }
+            
+            // Mevcut durumu güncelle
+            currentStatus = status;
+        }
+
+        // Masa ID'sini al veya oluştur (1sthillman/qr projesine uyumlu)
+        async function getOrCreateTableId() {
+            if (!supabase) return null;
+            
+            try {
+                console.log(`Masa ID'si aranıyor: Restoran=${restaurantId}, Masa=${tableId}`);
+                
+                // Masa var mı kontrol et
+                const { data, error } = await supabase
+                    .from('tables')
+                    .select('id')
+                    .eq('restaurant_id', restaurantId)
+                    .eq('number', parseInt(tableId))
+                    .single();
+                
+                if (error && error.code !== 'PGRST116') { // PGRST116: No rows returned
+                    console.error('Masa ID sorgusu hatası:', error);
+                    return null;
+                }
+                
+                if (data) {
+                    console.log('Mevcut masa ID bulundu:', data.id);
+                    return data.id;
+                }
+                
+                console.log('Masa bulunamadı, yeni masa oluşturuluyor...');
+                
+                // Masa yoksa oluştur
+                const { data: newTable, error: insertError } = await supabase
+                    .from('tables')
+                    .insert({
+                        restaurant_id: restaurantId,
+                        number: parseInt(tableId)
+                    })
+                    .select()
+                    .single();
+                
+                if (insertError) {
+                    console.error('Masa oluşturma hatası:', insertError);
+                    return null;
+                }
+                
+                console.log('Yeni masa oluşturuldu:', newTable.id);
+                return newTable.id;
+            } catch (err) {
+                console.error('Masa ID alma hatası:', err);
+                return null;
+            }
+        }
+
+        // Garson çağırma işlevi
+        function setupCallButton() {
+            const callWaiterBtn = document.getElementById('callWaiterBtn');
+            const callButtonText = document.getElementById('callButtonText');
+            const activeLabel = document.getElementById('activeLabel');
+            
+            if (!callWaiterBtn) return;
+            
+            // Başlangıçta buton durumunu ayarla
+            updateButtonState();
+            
+            callWaiterBtn.addEventListener('click', async function() {
+                // Eğer servis durumundaysa, butonu devre dışı bırak
+                if (currentStatus === 'serving') {
+                    showToast('success', 'Garson Geliyor', 'Garson masanıza yönlendirildi');
+                    return;
+                }
+                
+                const newStatus = isCallActive ? 'idle' : 'calling';
+                
+                // Supabase'e durum güncellemesi gönder
+                if (supabase) {
+                    console.log(`Masa durumu güncelleniyor: Masa ${tableId}, Restoran ${restaurantId}, Durum: ${newStatus}`);
+                    
+                    try {
+                        // Masa DB ID'sini al veya oluştur
+                        if (!tableDbId) {
+                            tableDbId = await getOrCreateTableId();
+                            if (!tableDbId) {
+                                showToast('error', 'Hata', 'Masa bilgisi oluşturulamadı');
+                                return;
+                            }
+                        }
+                        
+                        console.log('Masa DB ID:', tableDbId);
+                        
+                        if (newStatus === 'calling') {
+                            // 1. Çağrı kaydı oluştur
+                            console.log('Çağrı kaydı oluşturuluyor...');
+                            const { data: callData, error: callError } = await supabase
+                                .from('calls')
+                                .insert({
+                                    table_id: tableDbId,
+                                    status: 'requested'
+                                })
+                                .select();
+                                
+                            if (callError) {
+                                console.error('Çağrı oluşturma hatası:', callError);
+                                showToast('error', 'Hata', 'Çağrı kaydedilemedi');
+                                return;
+                            }
+                            
+                            console.log('Çağrı kaydı oluşturuldu:', callData);
+                        }
+                        
+                        // UI güncelle
+                        updateUIStatus(newStatus);
+                        
+                        if (newStatus === 'calling') {
+                            showToast('success', 'Garson Çağırıldı', 'Garson en kısa sürede gelecek');
+                        } else {
+                            showToast('error', 'Çağrı İptal Edildi', 'Garson çağrısı iptal edildi');
+                        }
+                    } catch (err) {
+                        console.error('Garson çağırma hatası:', err);
+                        showToast('error', 'Hata', 'İşlem sırasında bir hata oluştu');
+                    }
+                } else {
+                    // Demo modu
+                    updateUIStatus(newStatus);
+                    
+                    if (newStatus === 'calling') {
+                        showToast('success', 'Garson Çağırıldı', 'Garson en kısa sürede gelecek');
+                    } else {
+                        showToast('error', 'Çağrı İptal Edildi', 'Garson çağrısı iptal edildi');
+                    }
+                }
+            });
+        }
+        
+        // Buton durumunu güncelle
+        function updateButtonState() {
+            const callWaiterBtn = document.getElementById('callWaiterBtn');
+            const callButtonText = document.getElementById('callButtonText');
+            const activeLabel = document.getElementById('activeLabel');
+            
+            if (currentStatus === 'calling') {
+                isCallActive = true;
+                callWaiterBtn.classList.add('active');
+                callButtonText.textContent = 'ÇAĞRIYI İPTAL ET';
+                activeLabel.classList.remove('hidden');
+            } else if (currentStatus === 'serving') {
+                isCallActive = false;
+                callWaiterBtn.classList.remove('active');
+                callWaiterBtn.classList.add('bg-opacity-50');
+                callButtonText.textContent = 'GARSON GELİYOR';
+                activeLabel.classList.add('hidden');
+            } else {
+                isCallActive = false;
+                callWaiterBtn.classList.remove('active', 'bg-opacity-50');
+                callButtonText.textContent = 'GARSON ÇAĞIR';
+                activeLabel.classList.add('hidden');
+            }
+        }
+        
+        // Masa durumunu Supabase'den kontrol et
+        async function checkTableStatus() {
+            if (!supabase) return;
+            
+            try {
+                // 1. Masa ID'sini kontrol et
+                tableDbId = await getOrCreateTableId();
+                if (!tableDbId) return;
+                
+                // 2. Aktif çağrı var mı kontrol et
+                console.log('Aktif çağrı kontrol ediliyor...');
+                const { data: callData, error: callError } = await supabase
+                    .from('calls')
+                    .select('status')
+                    .eq('table_id', tableDbId)
+                    .eq('status', 'requested')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                    
+                if (!callError && callData) {
+                    console.log('Aktif çağrı bulundu:', callData);
+                    // Aktif çağrı varsa, calling durumuna getir
+                    updateUIStatus('calling');
+                    return;
+                } else if (callError && callError.code !== 'PGRST116') {
+                    console.error('Çağrı sorgusu hatası:', callError);
+                }
+                
+                // 3. Masa durumunu kontrol et (aktif çağrı yoksa)
+                console.log('Masa durumu kontrol ediliyor...');
+                const { data, error } = await supabase
+                    .from('tables')
+                    .select('status')
+                    .eq('id', tableDbId)
+                    .single();
+                
+                if (error) {
+                    console.error('Masa durumu alınamadı:', error);
+                    return;
+                }
+                
+                if (data && data.status) {
+                    console.log('Masa durumu:', data.status);
+                    updateUIStatus(data.status);
+                }
+            } catch (err) {
+                console.error('Masa durumu kontrol edilirken hata oluştu:', err);
+            }
+        }
+        
+        // Masa durumunu Supabase'den dinle
+        function listenForTableStatus() {
+            if (!supabase || !tableDbId) return;
+            
+            // Önceki kanalı temizle
+            if (supabaseChannel) {
+                supabaseChannel.unsubscribe();
+            }
+            
+            console.log(`Masa ${tableId} ve Restoran ${restaurantId} için Supabase realtime dinleme başlatılıyor...`);
+            
+            // 1. Çağrıları dinle
+            supabaseChannel = supabase
+                .channel(`calls-${tableDbId}`)
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'calls',
+                    filter: `table_id=eq.${tableDbId}`
+                }, payload => {
+                    console.log('Çağrı durumu değişikliği:', payload);
+                    
+                    if (payload.eventType === 'INSERT') {
+                        // Yeni çağrı oluşturuldu
+                        updateUIStatus('calling');
+                    } else if (payload.eventType === 'UPDATE' && payload.new.status === 'acknowledged') {
+                        // Çağrı yanıtlandı
+                        updateUIStatus('serving');
+                        showToast('success', 'Garson Geliyor', 'Garson masanıza yönlendirildi');
+                    }
+                })
+                .subscribe(status => {
+                    console.log('Supabase realtime calls bağlantı durumu:', status);
+                });
+        }
+        
+        // Arayüz durumunu güncelle
+        function updateUIStatus(status) {
+            updateStatusIndicator(status);
+            updateButtonState();
+            
+            if (status === 'serving' && isCallActive) {
+                showToast('success', 'Garson Geliyor', 'Garson masanıza yönlendirildi');
+            }
+        }
+        
+        // Başlangıç
+        getUrlParams();
+        
+        if (initSupabase()) {
+            checkTableStatus().then(() => {
+                if (tableDbId) {
+                    listenForTableStatus();
+                }
+            });
+        } else {
+            console.log('Demo modunda çalışılıyor');
+        }
+        
+        setupCallButton();
+    });
+    </script>
+</body>
+</html> 
