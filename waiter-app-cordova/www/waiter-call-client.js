@@ -178,16 +178,27 @@ async function callWaiter() {
         callButton.disabled = true;
         callButton.innerHTML = '<i class="ri-loader-2-line animate-spin mr-2"></i> Garson çağrılıyor...';
         
+        console.log('Garson çağırma işlemi başlatıldı:', { restaurantId, tableNumber, tableId });
+        
+        // Masa ID'si yoksa tekrar kontrol et
+        if (!tableId) {
+            await checkOrCreateTable();
+            if (!tableId) {
+                console.error('Masa ID bulunamadı');
+                showError('Masa bilgisi bulunamadı. Lütfen tekrar deneyin.');
+                resetCallButton(callButton);
+                return;
+            }
+        }
+        
         // 1. Masa durumunu 'calling' olarak güncelle
         const { error: tableError } = await supabase
             .from('tables')
-            .upsert({
-                restaurant_id: restaurantId,
-                table_id: parseInt(tableNumber),
-                number: parseInt(tableNumber),
+            .update({
                 status: 'calling',
                 updated_at: new Date().toISOString()
-            });
+            })
+            .eq('id', tableId);
             
         if (tableError) {
             console.error('Masa durumu güncellenemedi:', tableError);
@@ -219,6 +230,8 @@ async function callWaiter() {
         currentCallId = callData.id;
         isCallActive = true;
         currentStatus = 'calling';
+        
+        console.log('Çağrı başarıyla oluşturuldu:', { callId: currentCallId });
         
         // Realtime bağlantıyı güncelle
         setupRealtimeConnection();
@@ -266,56 +279,86 @@ function resetCallButton(button) {
 
 // Realtime bağlantıyı kur
 function setupRealtimeConnection() {
-    if (!supabase || !tableId) return;
+    if (!supabase) {
+        console.error('Supabase bağlantısı yok, realtime dinleme yapılamıyor');
+        return;
+    }
     
-    console.log('Realtime bağlantı kuruluyor...');
+    if (!tableId) {
+        console.error('Masa ID yok, realtime dinleme yapılamıyor');
+        return;
+    }
     
-    // Masa durumu değişikliklerini dinle
-    supabase
-        .channel('table-status-changes')
-        .on('postgres_changes', { 
-            event: 'UPDATE', 
-            schema: 'public', 
-            table: 'tables',
-            filter: `id=eq.${tableId}`
-        }, payload => {
-            console.log('Masa durumu değişti:', payload);
-            
-            if (payload.new.status) {
-                currentStatus = payload.new.status;
-                updateButtonState();
-                
-                if (currentStatus === 'serving') {
-                    showWaiterResponse('Garsonunuz geliyor!');
-                }
-            }
-        })
-        .subscribe(status => {
-            console.log('Masa durumu dinleme durumu:', status);
-        });
+    console.log('Realtime bağlantı kuruluyor...', { tableId, currentCallId });
     
-    // Çağrı durumu değişikliklerini dinle
-    if (currentCallId) {
+    try {
+        // Önceki kanalları temizle
+        const tableChannel = supabase.channel('table-status-changes');
+        if (tableChannel) {
+            tableChannel.unsubscribe();
+            console.log('Önceki masa kanalı aboneliği iptal edildi');
+        }
+        
+        const callChannel = supabase.channel('call-status-changes');
+        if (callChannel) {
+            callChannel.unsubscribe();
+            console.log('Önceki çağrı kanalı aboneliği iptal edildi');
+        }
+        
+        // Masa durumu değişikliklerini dinle
         supabase
-            .channel('call-status-changes')
+            .channel('table-status-changes')
             .on('postgres_changes', { 
-                event: 'UPDATE', 
+                event: '*', 
                 schema: 'public', 
-                table: 'calls',
-                filter: `id=eq.${currentCallId}`
+                table: 'tables',
+                filter: `id=eq.${tableId}`
             }, payload => {
-                console.log('Çağrı durumu değişti:', payload);
+                console.log('Masa durumu değişti:', payload);
                 
-                if (payload.new.status === 'acknowledged') {
-                    showWaiterResponse('Garsonunuz geliyor!');
-                    isCallActive = false;
-                    currentStatus = 'serving';
+                if (payload.new && payload.new.status) {
+                    currentStatus = payload.new.status;
+                    console.log(`Masa durumu güncellendi: ${currentStatus}`);
                     updateButtonState();
+                    
+                    if (currentStatus === 'serving') {
+                        showWaiterResponse('Garsonunuz geliyor!');
+                    } else if (currentStatus === 'idle') {
+                        isCallActive = false;
+                        currentCallId = null;
+                        showWaiterResponse('Çağrınız tamamlandı.');
+                    }
                 }
             })
             .subscribe(status => {
-                console.log('Çağrı durumu dinleme durumu:', status);
+                console.log('Masa durumu dinleme durumu:', status);
             });
+        
+        // Çağrı durumu değişikliklerini dinle
+        if (currentCallId) {
+            supabase
+                .channel('call-status-changes')
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'calls',
+                    filter: `id=eq.${currentCallId}`
+                }, payload => {
+                    console.log('Çağrı durumu değişti:', payload);
+                    
+                    if (payload.new && payload.new.status === 'acknowledged') {
+                        showWaiterResponse('Garsonunuz çağrınızı onayladı ve geliyor!');
+                        isCallActive = false;
+                        currentStatus = 'serving';
+                        updateButtonState();
+                    }
+                })
+                .subscribe(status => {
+                    console.log('Çağrı durumu dinleme durumu:', status);
+                });
+        }
+    } catch (error) {
+        console.error('Realtime bağlantı kurulurken hata:', error);
     }
 }
 

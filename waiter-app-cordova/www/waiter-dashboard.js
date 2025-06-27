@@ -59,6 +59,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
+    // Masa 3 sorununu düzelt butonu
+    const fixTable3Btn = document.createElement('button');
+    fixTable3Btn.className = 'bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center mt-2';
+    fixTable3Btn.innerHTML = '<i class="ri-tools-line mr-2"></i> Masa 3 Durumunu Düzelt';
+    fixTable3Btn.addEventListener('click', function() {
+        fixTable3Status();
+    });
+    
+    // Butonu kontrol paneline ekle
+    const controlPanel = document.querySelector('.control-panel');
+    if (controlPanel) {
+        controlPanel.appendChild(fixTable3Btn);
+    }
+    
     // Restoran ID URL'den geliyorsa
     const urlParams = new URLSearchParams(window.location.search);
     const urlRestaurantId = urlParams.get('restaurant_id');
@@ -77,8 +91,38 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Supabase bağlantısını başlat
 function initSupabase() {
     try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('Supabase bağlantısı başarılı');
+        // Supabase'in global değişken olarak yüklenip yüklenmediğini kontrol et
+        if (typeof supabaseClient !== 'undefined') {
+            supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase bağlantısı başarılı (global)');
+        } 
+        // window.supabase kontrolü
+        else if (window.supabase) {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase bağlantısı başarılı (window.supabase)');
+        }
+        // @supabase/supabase-js CDN'den yüklendiyse
+        else {
+            console.log('Supabase CDN yüklemesi kontrol ediliyor...');
+            
+            // Supabase JS kütüphanesini dinamik olarak yükle
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+            script.onload = function() {
+                if (window.supabase) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('Supabase bağlantısı başarılı (dinamik yükleme)');
+                } else {
+                    console.error('Supabase kütüphanesi yüklendi ancak global değişken bulunamadı');
+                    showError('Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
+                }
+            };
+            script.onerror = function() {
+                console.error('Supabase kütüphanesi yüklenemedi');
+                showError('Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
+            };
+            document.head.appendChild(script);
+        }
     } catch (error) {
         console.error('Supabase başlatma hatası:', error);
         showError('Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
@@ -90,6 +134,42 @@ async function setRestaurantId(id) {
     try {
         restaurantId = id;
         console.log('Restaurant ID ayarlandı:', restaurantId);
+        
+        // Supabase bağlantısını kontrol et
+        if (!supabase) {
+            console.log('Supabase bağlantısı bekleniyor...');
+            // Supabase bağlantısı kurulana kadar bekle
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            const waitForSupabase = setInterval(() => {
+                attempts++;
+                
+                if (supabase) {
+                    clearInterval(waitForSupabase);
+                    console.log('Supabase bağlantısı hazır, işlemler başlatılıyor...');
+                    
+                    // Masa durumlarını dinle
+                    listenForTableChanges();
+                    
+                    // Masaları yükle ve göster
+                    loadTables();
+                    
+                    // Aktif çağrıları kontrol et
+                    checkActiveCalls();
+                } 
+                else if (attempts >= maxAttempts) {
+                    clearInterval(waitForSupabase);
+                    console.error('Supabase bağlantısı kurulamadı');
+                    showError('Veritabanı bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
+                }
+                else {
+                    console.log(`Supabase bağlantısı bekleniyor... (${attempts}/${maxAttempts})`);
+                }
+            }, 500);
+            
+            return;
+        }
         
         // Masa durumlarını dinle
         listenForTableChanges();
@@ -108,7 +188,10 @@ async function setRestaurantId(id) {
 
 // Supabase'den masa durumlarını dinle
 function listenForTableChanges() {
-    if (!supabase) return;
+    if (!supabase) {
+        console.error('Supabase bağlantısı yok, dinleme yapılamıyor');
+        return;
+    }
     
     // Önceki kanalları temizle
     if (supabaseChannel) {
@@ -124,81 +207,86 @@ function listenForTableChanges() {
     console.log('Supabase realtime dinleme başlatılıyor... Restaurant ID:', restaurantId);
     console.log('Supabase URL:', SUPABASE_URL);
     
-    // 1. Masa durumlarını dinle
-    supabaseChannel = supabase
-        .channel('table-changes')
-        .on('postgres_changes', { 
-            event: '*', 
-            schema: 'public', 
-            table: 'tables',
-            filter: `restaurant_id=eq.${restaurantId}`
-        }, payload => {
-            console.log('Supabase table event alındı:', payload);
-            
-            if (payload.new && payload.new.status === 'calling') {
-                // Yeni çağrı geldi
-                const tableNumber = payload.new.table_id || payload.new.number;
-                console.log(`Masa ${tableNumber} çağrı yapıyor!`);
+    try {
+        // 1. Masa durumlarını dinle
+        supabaseChannel = supabase
+            .channel('table-changes')
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'tables',
+                filter: `restaurant_id=eq.${restaurantId}`
+            }, payload => {
+                console.log('Supabase table event alındı:', payload);
                 
-                // Ses çal
-                playNotificationSound();
-                
-                // Bildirimi göster
-                showCallNotification(tableNumber);
-                
-                // Masaları güncelle
-                updateTableStatus(tableNumber, 'calling');
-                
-                // Modal göster
-                showCallModal(tableNumber);
-            } else if (payload.new && payload.new.status === 'serving') {
-                // Masa servis durumuna geçti
-                const tableNumber = payload.new.table_id || payload.new.number;
-                updateTableStatus(tableNumber, 'serving');
-            } else if (payload.new && payload.new.status === 'idle') {
-                // Masa boşta durumuna geçti
-                const tableNumber = payload.new.table_id || payload.new.number;
-                updateTableStatus(tableNumber, 'idle');
-            }
-        })
-        .subscribe(status => {
-            console.log('Masa durumu dinleme durumu:', status);
-        });
-    
-    // 2. Çağrı tablosunu dinle
-    callsChannel = supabase
-        .channel('calls-changes')
-        .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'calls'
-        }, async payload => {
-            console.log('Supabase calls event alındı:', payload);
-            
-            if (payload.new) {
-                // Yeni çağrı geldi, masa bilgisini al
-                const tableInfo = await getTableInfo(payload.new.table_id);
-                
-                if (tableInfo && tableInfo.restaurant_id === restaurantId) {
-                    console.log(`Masa ${tableInfo.number} çağrı yapıyor!`);
+                if (payload.new && payload.new.status === 'calling') {
+                    // Yeni çağrı geldi
+                    const tableNumber = payload.new.table_id || payload.new.number;
+                    console.log(`Masa ${tableNumber} çağrı yapıyor!`);
                     
                     // Ses çal
                     playNotificationSound();
                     
                     // Bildirimi göster
-                    showCallNotification(tableInfo.number);
+                    showCallNotification(tableNumber);
                     
                     // Masaları güncelle
-                    updateTableStatus(tableInfo.number, 'calling');
+                    updateTableStatus(tableNumber, 'calling');
                     
                     // Modal göster
-                    showCallModal(tableInfo.number);
+                    showCallModal(tableNumber);
+                } else if (payload.new && payload.new.status === 'serving') {
+                    // Masa servis durumuna geçti
+                    const tableNumber = payload.new.table_id || payload.new.number;
+                    updateTableStatus(tableNumber, 'serving');
+                } else if (payload.new && payload.new.status === 'idle') {
+                    // Masa boşta durumuna geçti
+                    const tableNumber = payload.new.table_id || payload.new.number;
+                    updateTableStatus(tableNumber, 'idle');
                 }
-            }
-        })
-        .subscribe(status => {
-            console.log('Çağrı dinleme durumu:', status);
-        });
+            })
+            .subscribe(status => {
+                console.log('Masa durumu dinleme durumu:', status);
+            });
+        
+        // 2. Çağrı tablosunu dinle
+        callsChannel = supabase
+            .channel('calls-changes')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'calls'
+            }, async payload => {
+                console.log('Supabase calls event alındı:', payload);
+                
+                if (payload.new) {
+                    // Yeni çağrı geldi, masa bilgisini al
+                    const tableInfo = await getTableInfo(payload.new.table_id);
+                    
+                    if (tableInfo && tableInfo.restaurant_id === restaurantId) {
+                        console.log(`Masa ${tableInfo.number} çağrı yapıyor!`);
+                        
+                        // Ses çal
+                        playNotificationSound();
+                        
+                        // Bildirimi göster
+                        showCallNotification(tableInfo.number);
+                        
+                        // Masaları güncelle
+                        updateTableStatus(tableInfo.number, 'calling');
+                        
+                        // Modal göster
+                        showCallModal(tableInfo.number);
+                    }
+                }
+            })
+            .subscribe(status => {
+                console.log('Çağrı dinleme durumu:', status);
+            });
+    } catch (error) {
+        console.error('Realtime dinleme başlatılamadı:', error);
+        showError('Realtime bağlantısı kurulamadı. Lütfen sayfayı yenileyin.');
+    }
 }
 
 // Masa bilgisini al
@@ -681,4 +769,50 @@ function showError(message) {
 // Başarı mesajı göster
 function showSuccess(message) {
     showToast('success', 'Başarılı', message);
+}
+
+// Masa 3 durumunu düzelt
+async function fixTable3Status() {
+    if (!supabase) {
+        showError('Supabase bağlantısı yok. Lütfen sayfayı yenileyin.');
+        return;
+    }
+    
+    try {
+        // Masa 3'ün ID'sini bul
+        const { data: tableData, error: tableError } = await supabase
+            .from('tables')
+            .select('id')
+            .eq('restaurant_id', 'DEMO')
+            .eq('number', 3)
+            .single();
+            
+        if (tableError || !tableData) {
+            console.error('Masa 3 bulunamadı:', tableError);
+            showError('Masa 3 bulunamadı.');
+            return;
+        }
+        
+        // Masa durumunu idle olarak güncelle
+        const { error: updateError } = await supabase
+            .from('tables')
+            .update({ status: 'idle' })
+            .eq('id', tableData.id);
+            
+        if (updateError) {
+            console.error('Masa 3 durumu güncellenemedi:', updateError);
+            showError('Masa 3 durumu güncellenemedi.');
+            return;
+        }
+        
+        // Başarı mesajı göster
+        showSuccess('Masa 3 durumu başarıyla düzeltildi.');
+        
+        // Masaları yeniden yükle
+        loadTables();
+        
+    } catch (error) {
+        console.error('Masa 3 düzeltme hatası:', error);
+        showError('Masa 3 düzeltilirken bir hata oluştu.');
+    }
 } 
