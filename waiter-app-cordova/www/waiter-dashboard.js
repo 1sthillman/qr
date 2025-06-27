@@ -138,6 +138,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!supabase) return;
         
         try {
+            console.log(`Masa ${tableNumber} çağrısı yanıtlanıyor...`);
+            
             // Önce masa ID'sini bul
             const { data: tableData, error: tableError } = await supabase
                 .from('tables')
@@ -151,7 +153,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Çağrıyı bul ve güncelle
+            console.log('Bulunan masa ID:', tableData.id);
+            
+            // 1. Masa durumunu 'serving' olarak güncelle
+            const { error: updateTableError } = await supabase
+                .from('tables')
+                .update({ status: 'serving' })
+                .eq('id', tableData.id);
+                
+            if (updateTableError) {
+                console.error('Masa durumu güncelleme hatası:', updateTableError);
+                return;
+            }
+            
+            console.log(`Masa ${tableNumber} durumu 'serving' olarak güncellendi`);
+            
+            // 2. Çağrıyı bul ve güncelle
             const { data: callData, error: callError } = await supabase
                 .from('calls')
                 .select('id')
@@ -166,7 +183,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Çağrıyı yanıtla
+            console.log('Bulunan çağrı ID:', callData.id);
+            
+            // 3. Çağrıyı yanıtla
             const { error: updateError } = await supabase
                 .from('calls')
                 .update({
@@ -342,13 +361,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Önceki kanalları temizle
         if (supabaseChannel) {
             supabaseChannel.unsubscribe();
+            console.log('Önceki masa kanalı aboneliği iptal edildi');
         }
         
         if (callsChannel) {
             callsChannel.unsubscribe();
+            console.log('Önceki çağrı kanalı aboneliği iptal edildi');
         }
         
         console.log('Supabase realtime dinleme başlatılıyor... Restaurant ID:', restaurantId);
+        console.log('Supabase URL:', SUPABASE_URL);
         
         // 1. Masa durumlarını dinle
         supabaseChannel = supabase
@@ -363,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                     // Masa numarasını al
-                    const tableNumber = payload.new.number;
+                    const tableNumber = payload.new.table_id || payload.new.number;
                     const status = payload.new.status || 'idle';
                     
                     console.log(`Masa ${tableNumber} durumu güncellendi: ${status}`);
@@ -385,9 +407,15 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .subscribe(status => {
                 console.log('Supabase realtime table bağlantı durumu:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('Masa değişiklikleri dinleniyor. Filter:', `restaurant_id=eq.${restaurantId}`);
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('Masa kanalı bağlantı hatası!');
+                }
             });
             
         // 2. Çağrıları dinle (1sthillman/qr projesine uyumlu)
+        console.log('Çağrı kanalı oluşturuluyor...');
         callsChannel = supabase
             .channel('calls-channel')
             .on('postgres_changes', { 
@@ -399,6 +427,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Yeni çağrı geldi
                 const call = payload.new;
+                
+                if (!call.table_id) {
+                    console.log('Çağrıda table_id bulunamadı:', call);
+                    return;
+                }
                 
                 // Masa ID'sini al
                 getTableInfo(call.table_id).then(tableInfo => {
@@ -414,14 +447,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         showToast('error', `Masa ${tableInfo.number} çağırıyor`, 'Müşteri servisi bekliyor!');
                         showModal(tableInfo.number);
                         playCallSound();
+                    } else {
+                        console.log('Bu çağrı bu restorana ait değil veya masa bilgisi alınamadı:', tableInfo);
                     }
+                }).catch(err => {
+                    console.error('Masa bilgisi alma hatası:', err);
                 });
             })
             .subscribe(status => {
                 console.log('Supabase realtime calls INSERT bağlantı durumu:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('Çağrı ekleme olayları dinleniyor.');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('Çağrı kanalı bağlantı hatası!');
+                }
             });
             
         // 3. Çağrı güncellemelerini dinle
+        console.log('Çağrı güncelleme kanalı oluşturuluyor...');
         supabase
             .channel('calls-update-channel')
             .on('postgres_changes', { 
@@ -435,6 +478,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Çağrı yanıtlandı
                     const call = payload.new;
                     
+                    if (!call.table_id) {
+                        console.log('Çağrıda table_id bulunamadı:', call);
+                        return;
+                    }
+                    
                     // Masa ID'sini al
                     getTableInfo(call.table_id).then(tableInfo => {
                         if (tableInfo && tableInfo.restaurant_id === restaurantId) {
@@ -443,12 +491,21 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Masa durumunu güncelle
                             tableStatuses[tableInfo.number] = 'serving';
                             updateTableStatus(tableInfo.number, 'serving');
+                        } else {
+                            console.log('Bu çağrı bu restorana ait değil veya masa bilgisi alınamadı:', tableInfo);
                         }
+                    }).catch(err => {
+                        console.error('Masa bilgisi alma hatası:', err);
                     });
                 }
             })
             .subscribe(status => {
                 console.log('Supabase realtime calls UPDATE bağlantı durumu:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('Çağrı güncelleme olayları dinleniyor.');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('Çağrı güncelleme kanalı bağlantı hatası!');
+                }
             });
     }
     
@@ -457,18 +514,58 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!supabase) return null;
         
         try {
-            const { data, error } = await supabase
-                .from('tables')
-                .select('restaurant_id, number')
-                .eq('id', tableId)
-                .single();
+            console.log(`Masa bilgisi alınıyor: ${tableId}`);
+            
+            // UUID formatında ise doğrudan ID ile sorgula
+            if (tableId && (typeof tableId === 'string') && 
+                tableId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+                const { data, error } = await supabase
+                    .from('tables')
+                    .select('restaurant_id, number')
+                    .eq('id', tableId)
+                    .single();
+                    
+                if (error) {
+                    console.error('Masa bilgisi alınamadı (UUID):', error);
+                    return null;
+                }
                 
-            if (error) {
-                console.error('Masa bilgisi alınamadı:', error);
-                return null;
+                console.log('Masa bilgisi bulundu (UUID):', data);
+                return data;
+            } 
+            // Sayısal ID ise table_id veya number ile sorgula
+            else if (tableId) {
+                // Önce table_id ile dene
+                const { data: data1, error: error1 } = await supabase
+                    .from('tables')
+                    .select('restaurant_id, number, id')
+                    .eq('table_id', parseInt(tableId))
+                    .eq('restaurant_id', restaurantId)
+                    .single();
+                    
+                if (!error1 && data1) {
+                    console.log('Masa bilgisi bulundu (table_id):', data1);
+                    return data1;
+                }
+                
+                // Sonra number ile dene
+                const { data: data2, error: error2 } = await supabase
+                    .from('tables')
+                    .select('restaurant_id, number, id')
+                    .eq('number', parseInt(tableId))
+                    .eq('restaurant_id', restaurantId)
+                    .single();
+                    
+                if (error2) {
+                    console.error('Masa bilgisi alınamadı (number):', error2);
+                    return null;
+                }
+                
+                console.log('Masa bilgisi bulundu (number):', data2);
+                return data2;
             }
             
-            return data;
+            return null;
         } catch (err) {
             console.error('Masa bilgisi alma hatası:', err);
             return null;

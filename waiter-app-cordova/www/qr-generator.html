@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#151522">
+    <title>QR Kod Oluşturucu</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B35',
+                        secondary: '#1a1a25',
+                        'glass-bg': 'rgba(26,26,37,0.8)',
+                        'glass-border': 'rgba(255,255,255,0.08)',
+                    },
+                    backdropBlur: {
+                        glass: '10px',
+                    },
+                    borderRadius: {
+                        button: '8px'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <style>
+        .qr-code-container {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 16px;
+        }
+        
+        .qr-table-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .qr-table-card:hover {
+            border-color: #FF6B35;
+        }
+        
+        .qr-code-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            
+            .print-section, .print-section * {
+                visibility: visible;
+            }
+            
+            .print-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen font-inter">
+    <div class="min-h-screen flex flex-col bg-gradient-to-b from-[#151525]/80 to-black/80">
+        <header class="p-5 border-b border-gray-800 flex justify-between items-center bg-black bg-opacity-60 backdrop-blur-lg">
+            <div class="flex items-center">
+                <i class="ri-qr-code-line text-primary text-3xl mr-3"></i>
+                <h2 class="text-2xl font-bold text-white">QR Kod Oluşturucu</h2>
+            </div>
+            <div class="flex items-center space-x-3">
+                <a href="index.html" class="text-white opacity-80 hover:opacity-100 hover:text-primary transition-colors">
+                    <i class="ri-home-line text-2xl"></i>
+                </a>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6">
+            <div class="bg-glass-bg backdrop-blur-glass border border-glass-border rounded-xl p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">QR Kod Ayarları</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-white" for="restaurantIdInput">Restaurant ID</label>
+                        <input id="restaurantIdInput" type="text" class="w-full border rounded-button px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-primary" placeholder="ABC123">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-white" for="tableCountInput">Masa Sayısı</label>
+                        <input id="tableCountInput" type="number" class="w-full border rounded-button px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-primary" value="5" min="1" max="100">
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-1 text-white" for="baseUrlInput">QR Kod URL'i</label>
+                    <input id="baseUrlInput" type="text" class="w-full border rounded-button px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-primary" value="https://1sthillman.github.io/qr/waiter-call.html">
+                    <p class="text-xs text-gray-400 mt-1">QR kodlar bu URL'e yönlendirilecektir. Masa ve restoran ID'si otomatik eklenecektir.</p>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="generateQrBtn" class="bg-primary text-white px-6 py-3 rounded-button font-semibold hover:bg-opacity-90 transition-all flex items-center">
+                        <i class="ri-qr-code-line mr-2"></i> QR Kodları Oluştur
+                    </button>
+                </div>
+            </div>
+            
+            <div id="qrCodesContainer" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Oluşturulan QR Kodlar</h3>
+                    <button id="printAllBtn" class="bg-white bg-opacity-10 text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-opacity-20 transition-all flex items-center">
+                        <i class="ri-printer-line mr-2"></i> Tümünü Yazdır
+                    </button>
+                </div>
+                
+                <div id="qrCodesGrid" class="qr-code-grid">
+                    <!-- QR kodlar buraya eklenecek -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast bildirim alanı -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+
+    <!-- Yazdırma bölümü -->
+    <div id="printSection" class="hidden print-section">
+        <!-- Yazdırma içeriği buraya eklenecek -->
+    </div>
+
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateQrBtn = document.getElementById('generateQrBtn');
+            const qrCodesContainer = document.getElementById('qrCodesContainer');
+            const qrCodesGrid = document.getElementById('qrCodesGrid');
+            const printAllBtn = document.getElementById('printAllBtn');
+            const printSection = document.getElementById('printSection');
+            
+            // Toast mesaj gösterme
+            function showToast(type, title, message, duration = 3000) {
+                const toastContainer = document.getElementById('toastContainer');
+                if (!toastContainer) return;
+                
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                // Toast ikonu
+                const icon = document.createElement('div');
+                icon.className = 'toast-icon';
+                
+                if (type === 'success') {
+                    icon.innerHTML = '<i class="ri-check-line"></i>';
+                } else if (type === 'error') {
+                    icon.innerHTML = '<i class="ri-error-warning-line"></i>';
+                }
+                
+                // Toast içeriği
+                const content = document.createElement('div');
+                content.className = 'toast-content';
+                
+                const titleEl = document.createElement('div');
+                titleEl.className = 'toast-title';
+                titleEl.textContent = title;
+                
+                const messageEl = document.createElement('div');
+                messageEl.className = 'toast-message';
+                messageEl.textContent = message;
+                
+                content.appendChild(titleEl);
+                content.appendChild(messageEl);
+                
+                toast.appendChild(icon);
+                toast.appendChild(content);
+                
+                toastContainer.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, duration);
+            }
+            
+            // QR kod oluşturma
+            function generateQRCode(url, elementId) {
+                return new Promise((resolve) => {
+                    new QRCode(document.getElementById(elementId), {
+                        text: url,
+                        width: 128,
+                        height: 128,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                    
+                    // QR kod oluşturulduktan sonra resolve et
+                    setTimeout(() => resolve(), 100);
+                });
+            }
+            
+            // QR kodları oluştur
+            generateQrBtn.addEventListener('click', async function() {
+                const restaurantId = document.getElementById('restaurantIdInput').value.trim();
+                const tableCount = parseInt(document.getElementById('tableCountInput').value);
+                const baseUrl = document.getElementById('baseUrlInput').value.trim();
+                
+                if (!restaurantId) {
+                    showToast('error', 'Hata', 'Lütfen Restaurant ID girin');
+                    return;
+                }
+                
+                if (!tableCount || tableCount < 1 || tableCount > 100) {
+                    showToast('error', 'Hata', 'Geçerli bir masa sayısı girin (1-100)');
+                    return;
+                }
+                
+                if (!baseUrl) {
+                    showToast('error', 'Hata', 'Lütfen QR kod URL\'i girin');
+                    return;
+                }
+                
+                // QR kodları temizle
+                qrCodesGrid.innerHTML = '';
+                printSection.innerHTML = '';
+                
+                // QR kodları oluştur
+                for (let i = 1; i <= tableCount; i++) {
+                    const tableId = i;
+                    const qrUrl = `${baseUrl}?restaurant_id=${restaurantId}&table_id=${tableId}`;
+                    
+                    // QR kodu için kart oluştur
+                    const qrCard = document.createElement('div');
+                    qrCard.className = 'qr-table-card';
+                    qrCard.innerHTML = `
+                        <div class="text-center">
+                            <h4 class="font-semibold mb-2">Masa ${tableId}</h4>
+                            <div class="qr-code-container">
+                                <div id="qrcode-${tableId}"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mb-2">${restaurantId}</p>
+                            <button class="print-single-btn bg-white bg-opacity-10 text-white px-3 py-1 rounded-button text-xs font-medium hover:bg-opacity-20 transition-all no-print" data-table="${tableId}">
+                                <i class="ri-printer-line mr-1"></i> Yazdır
+                            </button>
+                        </div>
+                    `;
+                    
+                    qrCodesGrid.appendChild(qrCard);
+                    
+                    // QR kodu oluştur
+                    await generateQRCode(qrUrl, `qrcode-${tableId}`);
+                    
+                    // Yazdırma bölümü için QR kodu oluştur
+                    const printQrCard = document.createElement('div');
+                    printQrCard.className = `print-card print-card-${tableId}`;
+                    printQrCard.style.pageBreakAfter = 'always';
+                    printQrCard.style.padding = '20px';
+                    printQrCard.style.textAlign = 'center';
+                    printQrCard.innerHTML = `
+                        <div style="max-width: 300px; margin: 0 auto; padding: 20px;">
+                            <h2 style="font-size: 24px; margin-bottom: 10px;">Restaurant ID: ${restaurantId}</h2>
+                            <h3 style="font-size: 20px; margin-bottom: 20px;">Masa ${tableId}</h3>
+                            <div class="print-qr-container" id="print-qrcode-${tableId}" style="background: white; padding: 16px; display: inline-block; margin-bottom: 16px;"></div>
+                            <p style="font-size: 14px; margin-top: 10px;">Garsonu çağırmak için QR kodu tarayın</p>
+                            <p style="font-size: 12px; color: #666; margin-top: 5px; word-break: break-all;">${qrUrl}</p>
+                        </div>
+                    `;
+                    
+                    printSection.appendChild(printQrCard);
+                    await generateQRCode(qrUrl, `print-qrcode-${tableId}`);
+                }
+                
+                // QR kodları göster
+                qrCodesContainer.classList.remove('hidden');
+                
+                // Tek tek yazdırma butonlarına event listener ekle
+                document.querySelectorAll('.print-single-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const tableId = this.getAttribute('data-table');
+                        printSingleQR(tableId);
+                    });
+                });
+                
+                showToast('success', 'Başarılı', `${tableCount} adet QR kod oluşturuldu`);
+            });
+            
+            // Tüm QR kodları yazdır
+            printAllBtn.addEventListener('click', function() {
+                window.print();
+            });
+            
+            // Tek bir QR kodu yazdır
+            function printSingleQR(tableId) {
+                // Diğer yazdırma kartlarını gizle
+                document.querySelectorAll('.print-card').forEach(card => {
+                    card.style.display = 'none';
+                });
+                
+                // Sadece seçilen masanın kartını göster
+                document.querySelector(`.print-card-${tableId}`).style.display = 'block';
+                
+                // Yazdır
+                window.print();
+                
+                // Tüm kartları tekrar göster
+                document.querySelectorAll('.print-card').forEach(card => {
+                    card.style.display = 'block';
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="theme-color" content="#151522">
+        <meta name="description" content="Restoran Garson Çağır Servisi">
+        <title>Garson Çağırma Sistemi</title>
+        <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+        <script>
+          tailwind.config = {
+            theme: {
+              extend: {
+                colors: {
+                  primary: '#FF6B35',
+                  secondary: '#1a1a25',
+                  'glass-bg': 'rgba(26,26,37,0.8)',
+                  'glass-border': 'rgba(255,255,255,0.08)',
+                },
+                backdropBlur: {
+                  glass: '10px',
+                },
+                borderRadius: {
+                  button: '8px'
+                },
+                fontFamily: {
+                  'sans': ['Inter', 'sans-serif'],
+                }
+              }
+            }
+          }
+        </script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+        <link rel="stylesheet" href="css/index.css">
+        <script src="js/glow-effect.js"></script>
+        <style>
+            .feature-card {
+                height: 240px;
+                transform-style: preserve-3d;
+                transform: perspective(1000px);
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .feature-card .card-content {
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                position: relative;
+                z-index: 10;
+                padding: 1.5rem;
+            }
+            
+            .feature-card .card-icon {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                color: #FF6B35;
+            }
+            
+            .feature-card .card-title {
+                font-size: 1.5rem;
+                font-weight: 600;
+                margin-bottom: 0.5rem;
+                text-align: center;
+            }
+            
+            .feature-card .card-description {
+                text-align: center;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 0.9rem;
+            }
+            
+            .hero-section {
+                min-height: 60vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .hero-section::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: radial-gradient(circle at 50% 50%, rgba(255, 107, 53, 0.15), transparent 70%);
+                pointer-events: none;
+            }
+            
+            .hero-title {
+                font-size: 3rem;
+                font-weight: 800;
+                line-height: 1.2;
+                margin-bottom: 1rem;
+                background: linear-gradient(90deg, #ffffff, #FF6B35);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            
+            @media (max-width: 640px) {
+                .hero-title {
+                    font-size: 2.25rem;
+                }
+            }
+        </style>
+    </head>
+    <body class="bg-black text-white min-h-screen font-inter">
+        <div class="min-h-screen flex flex-col bg-gradient-to-b from-[#151525]/80 to-black/80">
+            <header class="p-5 border-b border-gray-800 flex justify-between items-center bg-black bg-opacity-60 backdrop-blur-lg">
+                <div class="flex items-center">
+                    <i class="ri-restaurant-line text-primary text-3xl mr-3"></i>
+                    <h2 class="text-2xl font-bold text-white">Garson Çağırma</h2>
+                </div>
+                <nav class="flex items-center space-x-4">
+                    <a href="qr-generator.html" class="text-white opacity-80 hover:opacity-100 hover:text-primary transition-colors">
+                        <i class="ri-qr-code-line text-xl"></i>
+                        <span class="hidden sm:inline ml-1">QR Oluştur</span>
+                    </a>
+                    <a href="waiter-dashboard.html" class="text-white opacity-80 hover:opacity-100 hover:text-primary transition-colors">
+                        <i class="ri-user-voice-line text-xl"></i>
+                        <span class="hidden sm:inline ml-1">Garson Paneli</span>
+                    </a>
+                    <a href="https://github.com/1sthillman/qr" target="_blank" class="text-white opacity-80 hover:opacity-100 hover:text-primary transition-colors">
+                        <i class="ri-github-line text-xl"></i>
+                    </a>
+                </nav>
+            </header>
+
+            <main class="flex-1">
+                <!-- Hero Section -->
+                <section class="hero-section px-6 py-16">
+                    <div class="container mx-auto max-w-4xl">
+                        <h1 class="hero-title">QR Kod ile Garson Çağırma Sistemi</h1>
+                        <p class="text-xl text-gray-300 mb-8 max-w-2xl">
+                            Müşterilerinizin masalarından kolayca garson çağırmasını sağlayan, 
+                            QR kod tabanlı modern bir çözüm.
+                        </p>
+                        <div class="flex flex-wrap gap-4">
+                            <a href="qr-generator.html" class="bg-primary text-white px-8 py-3 rounded-button font-semibold hover:bg-opacity-90 transition-all flex items-center">
+                                <i class="ri-qr-code-line mr-2"></i> QR Kodları Oluştur
+                            </a>
+                            <a href="waiter-dashboard.html" class="bg-white bg-opacity-10 text-white px-8 py-3 rounded-button font-semibold hover:bg-opacity-20 transition-all flex items-center">
+                                <i class="ri-user-voice-line mr-2"></i> Garson Paneline Git
+                            </a>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Features Section -->
+                <section class="px-6 py-16 bg-glass-bg backdrop-blur-glass">
+                    <div class="container mx-auto max-w-6xl">
+                        <h2 class="text-3xl font-bold mb-12 text-center">Nasıl Çalışır?</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <!-- Feature 1 -->
+                            <div class="feature-card bg-glass-bg backdrop-blur-glass border border-glass-border rounded-xl">
+                                <div class="card-content">
+                                    <i class="ri-qr-code-line card-icon"></i>
+                                    <h3 class="card-title">QR Kodları Oluşturun</h3>
+                                    <p class="card-description">
+                                        Her masa için özel QR kodlar oluşturun ve masalara yerleştirin.
+                                    </p>
+                                </div>
+                                
+                                <div class="wave-container absolute inset-0 z-0">
+                                    <div class="wave wave1"></div>
+                                    <div class="wave wave2"></div>
+                                    <div class="wave wave3"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Feature 2 -->
+                            <div class="feature-card bg-glass-bg backdrop-blur-glass border border-glass-border rounded-xl">
+                                <div class="card-content">
+                                    <i class="ri-smartphone-line card-icon"></i>
+                                    <h3 class="card-title">Müşteriler QR Kodu Tarar</h3>
+                                    <p class="card-description">
+                                        Müşteriler kendi telefonlarıyla QR kodu tarayarak garson çağırabilir.
+                                    </p>
+                                </div>
+                                
+                                <div class="wave-container absolute inset-0 z-0">
+                                    <div class="wave wave1"></div>
+                                    <div class="wave wave2"></div>
+                                    <div class="wave wave3"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Feature 3 -->
+                            <div class="feature-card bg-glass-bg backdrop-blur-glass border border-glass-border rounded-xl">
+                                <div class="card-content">
+                                    <i class="ri-notification-3-line card-icon"></i>
+                                    <h3 class="card-title">Anında Bildirim Alın</h3>
+                                    <p class="card-description">
+                                        Garsonlar anında bildirim alır ve hangi masanın çağırdığını görür.
+                                    </p>
+                                </div>
+                                
+                                <div class="wave-container absolute inset-0 z-0">
+                                    <div class="wave wave1"></div>
+                                    <div class="wave wave2"></div>
+                                    <div class="wave wave3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- CTA Section -->
+                <section class="px-6 py-16">
+                    <div class="container mx-auto max-w-4xl text-center">
+                        <h2 class="text-3xl font-bold mb-4">Hemen Başlayın</h2>
+                        <p class="text-xl text-gray-300 mb-8">
+                            QR kod tabanlı garson çağırma sistemi ile müşteri memnuniyetini artırın.
+                        </p>
+                        <div class="flex flex-wrap justify-center gap-4">
+                            <a href="qr-generator.html" class="bg-primary text-white px-8 py-3 rounded-button font-semibold hover:bg-opacity-90 transition-all flex items-center">
+                                <i class="ri-qr-code-line mr-2"></i> QR Kodları Oluştur
+                            </a>
+                            <a href="waiter-dashboard.html" class="bg-white bg-opacity-10 text-white px-8 py-3 rounded-button font-semibold hover:bg-opacity-20 transition-all flex items-center">
+                                <i class="ri-user-voice-line mr-2"></i> Garson Paneline Git
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="py-8 px-6 border-t border-gray-800 bg-black bg-opacity-60">
+                <div class="container mx-auto max-w-6xl">
+                    <div class="flex flex-col md:flex-row justify-between items-center">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <i class="ri-restaurant-line text-primary text-2xl mr-2"></i>
+                            <span class="text-lg font-semibold">Garson Çağırma Sistemi</span>
+                        </div>
+                        <div class="text-gray-400 text-sm">
+                            &copy; 2025 | <a href="https://github.com/1sthillman/qr" target="_blank" class="text-primary hover:underline">GitHub</a>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // 3D tilt efektini etkinleştir
+                setTimeout(() => {
+                    if (typeof VanillaTilt !== 'undefined') {
+                        VanillaTilt.init(document.querySelectorAll('.feature-card'), {
+                            max: 10,
+                            speed: 400,
+                            glare: true,
+                            "max-glare": 0.2
+                        });
+                    }
+                }, 100);
+            });
+        </script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.2/vanilla-tilt.min.js"></script>
+    </body>
+</html>

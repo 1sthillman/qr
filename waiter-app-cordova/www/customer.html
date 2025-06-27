@@ -374,7 +374,25 @@
                         console.log('Masa DB ID:', tableDbId);
                         
                         if (newStatus === 'calling') {
-                            // 1. Çağrı kaydı oluştur
+                            // 1. Masa durumunu güncelle
+                            const { error: tableError } = await supabase
+                                .from('tables')
+                                .upsert({
+                                    id: tableDbId,
+                                    restaurant_id: restaurantId,
+                                    number: parseInt(tableId),
+                                    status: 'calling'
+                                });
+                                
+                            if (tableError) {
+                                console.error('Masa durumu güncelleme hatası:', tableError);
+                                showToast('error', 'Hata', 'Masa durumu güncellenemedi');
+                                return;
+                            }
+                            
+                            console.log('Masa durumu güncellendi: calling');
+                            
+                            // 2. Çağrı kaydı oluştur
                             console.log('Çağrı kaydı oluşturuluyor...');
                             const { data: callData, error: callError } = await supabase
                                 .from('calls')
@@ -391,6 +409,24 @@
                             }
                             
                             console.log('Çağrı kaydı oluşturuldu:', callData);
+                        } else {
+                            // Çağrıyı iptal et - masa durumunu idle yap
+                            const { error: tableError } = await supabase
+                                .from('tables')
+                                .upsert({
+                                    id: tableDbId,
+                                    restaurant_id: restaurantId,
+                                    number: parseInt(tableId),
+                                    status: 'idle'
+                                });
+                                
+                            if (tableError) {
+                                console.error('Masa durumu güncelleme hatası:', tableError);
+                                showToast('error', 'Hata', 'Masa durumu güncellenemedi');
+                                return;
+                            }
+                            
+                            console.log('Masa durumu güncellendi: idle');
                         }
                         
                         // UI güncelle
