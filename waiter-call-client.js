@@ -5,11 +5,14 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Global değişkenler
 let supabase = null;
-let channel = null;
+let tableChannel = null;
+let callChannel = null;
 let currentCallId = null;
 let restaurantId = null;
 let tableId = null;
 let tableNumber = null;
+let isCallActive = false;
+let currentStatus = 'idle';
 
 // Sayfa yüklendiğinde çalış
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,30 +62,8 @@ async function initWaiterCallPage() {
                 return;
             }
             
-            // Masa bilgisini al
-            const { data: tableData, error: tableError } = await supabase
-                .from('tables')
-                .select('*')
-                .eq('restaurant_id', restaurantId)
-                .eq('number', parseInt(tableNumber))
-                .single();
-                
-            console.log('Masa sorgusu sonucu:', { data: tableData, error: tableError });
-                
-            if (tableError) {
-                console.error('Masa bilgisi alınamadı:', tableError);
-                showError('Masa bilgisi bulunamadı. Hata: ' + tableError.message);
-                return;
-            }
-            
-            if (!tableData) {
-                console.error('Masa bulunamadı');
-                showError('Masa bilgisi bulunamadı.');
-                return;
-            }
-            
-            // Global değişkenleri güncelle
-            tableId = tableData.id;
+            // Masa bilgisini al veya oluştur
+            await checkOrCreateTable();
             
             // Sayfa içeriğini güncelle
             document.getElementById('restaurantName').textContent = restaurantData.name;
@@ -108,42 +89,183 @@ async function initWaiterCallPage() {
     }
 }
 
+// Masa kaydını kontrol et veya oluştur
+async function checkOrCreateTable() {
+    if (!supabase) return;
+    
+    try {
+        console.log(`Masa kontrolü yapılıyor: Restaurant ${restaurantId}, Masa ${tableNumber}`);
+        
+        // Önce masa var mı kontrol et
+        const { data, error } = await supabase
+            .from('tables')
+            .select('id, status')
+            .eq('restaurant_id', restaurantId)
+            .eq('number', parseInt(tableNumber))
+            .single();
+        
+        if (error && error.code !== 'PGRST116') { // PGRST116: No rows returned
+            console.error('Masa sorgusu hatası:', error);
+            return;
+        }
+        
+        if (data) {
+            // Masa bulundu
+            tableId = data.id;
+            currentStatus = data.status || 'idle';
+            console.log(`Masa bulundu: ID=${tableId}, Status=${currentStatus}`);
+        } else {
+            // Masa yoksa oluştur
+            const { data: newTable, error: insertError } = await supabase
+                .from('tables')
+                .insert({
+                    restaurant_id: restaurantId,
+                    number: parseInt(tableNumber),
+                    status: 'idle'
+                })
+                .select()
+                .single();
+            
+            if (insertError) {
+                console.error('Masa oluşturma hatası:', insertError);
+                return;
+            }
+            
+            tableId = newTable.id;
+            currentStatus = 'idle';
+            console.log(`Yeni masa oluşturuldu: ID=${tableId}`);
+        }
+        
+        // Aktif çağrı var mı kontrol et
+        await checkActiveCall();
+        
+    } catch (err) {
+        console.error('Masa kontrolü hatası:', err);
+    }
+}
+
+// Aktif çağrı var mı kontrol et
+async function checkActiveCall() {
+    if (!supabase || !tableId) return;
+    
+    try {
+        const { data, error } = await supabase
+            .from('calls')
+            .select('id, status')
+            .eq('table_id', tableId)
+            .eq('status', 'requested')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            console.error('Çağrı sorgusu hatası:', error);
+            return;
+        }
+        
+        if (data) {
+            // Aktif çağrı var
+            currentCallId = data.id;
+            isCallActive = true;
+            currentStatus = 'calling';
+            console.log(`Aktif çağrı bulundu: ID=${currentCallId}`);
+            
+            // Buton durumunu güncelle
+            updateButtonState();
+        }
+    } catch (err) {
+        console.error('Aktif çağrı kontrolü hatası:', err);
+    }
+}
+
+// Buton durumunu güncelle
+function updateButtonState() {
+    const callButton = document.getElementById('callWaiterButton');
+    if (!callButton) return;
+    
+    if (isCallActive) {
+        callButton.disabled = true;
+        callButton.innerHTML = '<i class="ri-check-line mr-2"></i> Garson Çağrıldı';
+        callButton.classList.add('bg-green-600');
+        callButton.classList.remove('bg-primary');
+    } else {
+        callButton.disabled = false;
+        callButton.innerHTML = '<i class="ri-user-voice-line mr-2"></i> Garsonu Çağır';
+        callButton.classList.add('bg-primary');
+        callButton.classList.remove('bg-green-600');
+    }
+}
+
 // Realtime bağlantı kurulumu
 function setupRealtimeConnection() {
-    // Eğer önceden bir bağlantı varsa kapat
-    if (channel) {
-        channel.unsubscribe();
+    if (!supabase) {
+        console.error('Supabase bağlantısı yok, realtime dinleme yapılamıyor');
+        return;
     }
     
-    // Yeni bağlantı kur
-    channel = supabase
-        .channel('call-status')
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'calls',
-            filter: currentCallId ? `id=eq.${currentCallId}` : undefined
-        }, (payload) => {
-            if (payload.new.status === 'acknowledged') {
-                showWaiterResponse('Garsonunuz geliyor!');
-            }
-        })
-        .subscribe();
-        
-    // Masa durumunu da dinle
-    supabase
-        .channel('table-status')
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'tables',
-            filter: `table_id=eq.${tableNumber} AND restaurant_id=eq.${restaurantId}`
-        }, (payload) => {
-            if (payload.new.status === 'serving') {
-                showWaiterResponse('Garsonunuz geliyor!');
-            }
-        })
-        .subscribe();
+    // Önceki kanalları temizle
+    if (tableChannel) {
+        tableChannel.unsubscribe();
+        console.log('Önceki masa kanalı aboneliği iptal edildi');
+    }
+    
+    if (callChannel) {
+        callChannel.unsubscribe();
+        console.log('Önceki çağrı kanalı aboneliği iptal edildi');
+    }
+    
+    console.log('Realtime bağlantı kuruluyor...', { tableId, currentCallId });
+    
+    try {
+        // 1. Çağrı durumunu dinle
+        callChannel = supabase
+            .channel('call-status-changes')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'calls',
+                filter: currentCallId ? `id=eq.${currentCallId}` : undefined
+            }, (payload) => {
+                console.log('Çağrı durumu değişti:', payload);
+                
+                if (payload.new.status === 'acknowledged') {
+                    showWaiterResponse('Garsonunuz geliyor!');
+                    isCallActive = false;
+                    updateButtonState();
+                }
+            })
+            .subscribe(status => {
+                console.log('Çağrı kanalı durumu:', status);
+            });
+            
+        // 2. Masa durumunu dinle
+        tableChannel = supabase
+            .channel('table-status-changes')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'tables',
+                filter: `id=eq.${tableId}`
+            }, (payload) => {
+                console.log('Masa durumu değişti:', payload);
+                
+                if (payload.new.status === 'serving') {
+                    showWaiterResponse('Garsonunuz geliyor!');
+                    isCallActive = false;
+                    currentStatus = 'serving';
+                    updateButtonState();
+                } else if (payload.new.status === 'idle') {
+                    isCallActive = false;
+                    currentStatus = 'idle';
+                    updateButtonState();
+                }
+            })
+            .subscribe(status => {
+                console.log('Masa kanalı durumu:', status);
+            });
+    } catch (error) {
+        console.error('Realtime bağlantı hatası:', error);
+    }
 }
 
 // Garson çağırma fonksiyonu
@@ -155,15 +277,27 @@ async function callWaiter() {
         callButton.disabled = true;
         callButton.innerHTML = '<i class="ri-loader-2-line animate-spin mr-2"></i> Garson çağrılıyor...';
         
+        console.log('Garson çağırma işlemi başlatıldı:', { restaurantId, tableNumber, tableId });
+        
+        // Masa ID'si yoksa tekrar kontrol et
+        if (!tableId) {
+            await checkOrCreateTable();
+            if (!tableId) {
+                console.error('Masa ID bulunamadı');
+                showError('Masa bilgisi bulunamadı. Lütfen tekrar deneyin.');
+                resetCallButton(callButton);
+                return;
+            }
+        }
+        
         // 1. Masa durumunu 'calling' olarak güncelle
         const { error: tableError } = await supabase
             .from('tables')
-            .upsert({
-                restaurant_id: restaurantId,
-                table_id: parseInt(tableNumber),
+            .update({
                 status: 'calling',
                 updated_at: new Date().toISOString()
-            });
+            })
+            .eq('id', tableId);
             
         if (tableError) {
             console.error('Masa durumu güncellenemedi:', tableError);
@@ -174,7 +308,7 @@ async function callWaiter() {
         
         console.log(`Masa ${tableNumber} durumu 'calling' olarak güncellendi`);
         
-        // 2. Çağrı oluştur (1sthillman/qr projesine uyumlu)
+        // 2. Çağrı oluştur
         const { data: callData, error: callError } = await supabase
             .from('calls')
             .insert({
@@ -193,6 +327,10 @@ async function callWaiter() {
         
         // Çağrı ID'sini kaydet
         currentCallId = callData.id;
+        isCallActive = true;
+        currentStatus = 'calling';
+        
+        console.log('Çağrı başarıyla oluşturuldu:', { callId: currentCallId });
         
         // Realtime bağlantıyı güncelle
         setupRealtimeConnection();
@@ -200,10 +338,8 @@ async function callWaiter() {
         // Başarı mesajı göster
         showSuccess('Garson çağrınız alındı. En kısa sürede sizinle ilgileneceğiz.');
         
-        // 30 saniye sonra butonu tekrar aktif et
-        setTimeout(() => {
-            resetCallButton(callButton);
-        }, 30000);
+        // Buton durumunu güncelle
+        updateButtonState();
         
     } catch (error) {
         console.error('Garson çağırma hatası:', error);
