@@ -129,6 +129,21 @@ function setupRealtimeConnection() {
             }
         })
         .subscribe();
+        
+    // Masa durumunu da dinle
+    supabase
+        .channel('table-status')
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'tables',
+            filter: `table_id=eq.${tableNumber} AND restaurant_id=eq.${restaurantId}`
+        }, (payload) => {
+            if (payload.new.status === 'serving') {
+                showWaiterResponse('Garsonunuz geliyor!');
+            }
+        })
+        .subscribe();
 }
 
 // Garson çağırma fonksiyonu
@@ -140,7 +155,26 @@ async function callWaiter() {
         callButton.disabled = true;
         callButton.innerHTML = '<i class="ri-loader-2-line animate-spin mr-2"></i> Garson çağrılıyor...';
         
-        // Çağrı oluştur
+        // 1. Masa durumunu 'calling' olarak güncelle
+        const { error: tableError } = await supabase
+            .from('tables')
+            .upsert({
+                restaurant_id: restaurantId,
+                table_id: parseInt(tableNumber),
+                status: 'calling',
+                updated_at: new Date().toISOString()
+            });
+            
+        if (tableError) {
+            console.error('Masa durumu güncellenemedi:', tableError);
+            showError('Masa durumu güncellenemedi. Lütfen tekrar deneyin.');
+            resetCallButton(callButton);
+            return;
+        }
+        
+        console.log(`Masa ${tableNumber} durumu 'calling' olarak güncellendi`);
+        
+        // 2. Çağrı oluştur (1sthillman/qr projesine uyumlu)
         const { data: callData, error: callError } = await supabase
             .from('calls')
             .insert({
