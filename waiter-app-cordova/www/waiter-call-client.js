@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Supabase istemcisini başlat
 function initSupabase() {
     try {
-        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('Supabase bağlantısı başarılı');
         return true;
     } catch (error) {
@@ -184,6 +184,7 @@ async function callWaiter() {
             .upsert({
                 restaurant_id: restaurantId,
                 table_id: parseInt(tableNumber),
+                number: parseInt(tableNumber),
                 status: 'calling',
                 updated_at: new Date().toISOString()
             });
