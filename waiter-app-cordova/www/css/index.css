@@ -1,0 +1,405 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+* {
+    -webkit-tap-highlight-color: rgba(0,0,0,0); /* make transparent link selection, adjust last value opacity 0 to 1.0 */
+    box-sizing: border-box;
+}
+
+body {
+    -webkit-touch-callout: none;                /* prevent callout to copy image, etc when tap to hold */
+    -webkit-text-size-adjust: none;             /* prevent webkit from resizing text to fit */
+    -webkit-user-select: none;                  /* prevent copy paste, to allow, change 'none' to 'text' */
+    background: linear-gradient(135deg, #111, #222);
+    color: #fff;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size:12px;
+    height:100vh;
+    margin:0px;
+    padding:0px;
+    /* Padding to avoid the "unsafe" areas behind notches in the screen */
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    text-transform:uppercase;
+    width:100%;
+    overflow-x: hidden;
+}
+
+/* Modern Yükleme Ekranı */
+#loadingPage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a0a15, #151525);
+    min-height: 100vh;
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+}
+
+#loadingPage .spinner {
+    width: 40px;
+    height: 40px;
+    position: relative;
+}
+
+#loadingPage .spinner:before {
+    content: '';
+    box-sizing: border-box;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    margin-top: -15px;
+    margin-left: -15px;
+    border-radius: 50%;
+    border: 2px solid #FF6B35;
+    border-top-color: transparent;
+    animation: spinner .8s linear infinite;
+}
+
+@keyframes spinner {
+    to {transform: rotate(360deg);}
+}
+
+#qrPage {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#qrPage.visible {
+    opacity: 1;
+}
+
+/* Portrait layout (default) */
+.app {
+    background:url(../img/logo.png) no-repeat center top; /* 170px x 200px */
+    position:absolute;             /* position in the center of the screen */
+    left:50%;
+    top:50%;
+    height:50px;                   /* text area height */
+    width:225px;                   /* text area width */
+    text-align:center;
+    padding:180px 0px 0px 0px;     /* image height is 200px (bottom 20px are overlapped with text) */
+    margin:-115px 0px 0px -112px;  /* offset vertical: half of image height and text area height */
+                                   /* offset horizontal: half of text area width */
+}
+
+/* Landscape layout (with min-width) */
+@media screen and (min-aspect-ratio: 1/1) and (min-width:400px) {
+    .app {
+        background-position:left center;
+        padding:75px 0px 75px 170px;  /* padding-top + padding-bottom + text area = image height */
+        margin:-90px 0px 0px -198px;  /* offset vertical: half of image height */
+                                      /* offset horizontal: half of image width and text area width */
+    }
+}
+
+h1 {
+    font-size:24px;
+    font-weight:normal;
+    margin:0px;
+    overflow:visible;
+    padding:0px;
+    text-align:center;
+}
+
+.event {
+    border-radius:4px;
+    color:#FFFFFF;
+    font-size:12px;
+    margin:0px 30px;
+    padding:2px 0px;
+}
+
+.event.listening {
+    background-color:#333333;
+    display:block;
+}
+
+.event.received {
+    background-color:#4B946A;
+    display:none;
+}
+
+#deviceready.ready .event.listening { display: none; }
+#deviceready.ready .event.received { display: block; }
+
+@keyframes fade {
+    from { opacity: 1.0; }
+    50% { opacity: 0.4; }
+    to { opacity: 1.0; }
+}
+
+.blink {
+    animation:fade 3000ms infinite;
+    -webkit-animation:fade 3000ms infinite;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+    body {
+        background-image:linear-gradient(to bottom, #111 0%, #000 100%);
+    }
+}
+
+/* Neo Gradient Tema - Yeni Nesil Tasarım */
+:root {
+    --neo-primary: #FF6B35;
+    --neo-secondary: #3A86FF;
+    --neo-dark: #111111;
+    --neo-light: #ffffff;
+    --neo-success: #00d26a;
+    --neo-danger: #ff3a5e;
+    --neo-card: #1a1a25;
+    --neo-border: rgba(255, 255, 255, 0.08);
+    --neo-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --neo-glow: 0 0 15px rgba(255, 107, 53, 0.3);
+    --card-border-radius: 16px;
+}
+
+/* Glassmorphism global container stilleri */
+header, nav, section, article, aside, footer, .card {
+    background: rgba(26, 26, 37, 0.8) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--neo-border);
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--neo-shadow);
+}
+
+/* Form ögeleri */
+a, button, input, select, textarea {
+    background: rgba(26, 26, 37, 0.5) !important;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid var(--neo-border);
+    border-radius: 10px;
+    color: inherit;
+    transition: all 0.3s ease;
+}
+
+/* Buton hover efekti */
+button {
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: rgba(255, 107, 53, 0.15) !important;
+    box-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+    border-color: rgba(255, 107, 53, 0.3);
+}
+
+/* Yeni 3D Masa Kartları - Modern Tasarım */
+#tablesGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 16px;
+    perspective: 1000px;
+}
+
+.table-card {
+    position: relative;
+    height: 130px !important;
+    border-radius: var(--card-border-radius) !important;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 25px 15px;
+    transform-style: preserve-3d;
+    will-change: transform;
+    cursor: pointer;
+    touch-action: none;
+}
+
+.table-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0) 100%);
+    z-index: 0;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+  .table-card .number {
+      position: relative;
+      z-index: 1;
+      font-family: 'Inter', sans-serif;
+      font-weight: 800;
+      letter-spacing: -1px;
+      text-align: center;
+      font-size: 3rem;
+      margin: 0;
+      transition: all 0.3s ease;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      transform: translateZ(20px);
+      color: var(--neo-light);
+  }
+
+/* Modern durum stilleri - Gradyan geçişleri */
+.table-card.state-idle {
+    background: linear-gradient(145deg, #10B981, #0EA5E9) !important;
+    box-shadow: var(--neo-shadow), 0 10px 20px rgba(16, 185, 129, 0.2);
+    border: none !important;
+}
+
+.table-card.state-calling {
+    background: linear-gradient(145deg, #EF4444, #F87171) !important;
+    box-shadow: var(--neo-shadow), 0 0 25px rgba(255, 58, 94, 0.4);
+    animation: pulse-danger 2s infinite;
+}
+
+.table-card.state-serving {
+    background: linear-gradient(145deg, #10B981, #34D399) !important;
+    box-shadow: var(--neo-shadow), 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+@keyframes pulse-danger {
+    0% { box-shadow: var(--neo-shadow), 0 0 20px rgba(255, 58, 94, 0.4); }
+    50% { box-shadow: var(--neo-shadow), 0 0 30px rgba(255, 58, 94, 0.7); }
+    100% { box-shadow: var(--neo-shadow), 0 0 20px rgba(255, 58, 94, 0.4); }
+}
+
+.table-card:hover {
+    transform: translateY(-5px) scale(1.02);
+}
+
+/* Butonlar */
+  .ackBtn, .resetBtn {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(255, 255, 255, 0.25) !important;
+      border-radius: 8px;
+      padding: 6px 12px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      transform: translateZ(15px);
+  }
+
+.ackBtn:hover, .resetBtn:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    transform: translateZ(15px) scale(1.05);
+}
+
+/* Responsive tasarım */
+@media (max-width: 640px) {
+    #tablesGrid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 12px;
+    }
+    
+    .table-card {
+        height: 110px !important;
+    }
+    
+    .table-card .number {
+        font-size: 2rem;
+    }
+}
+
+/* Animasyon Efektleri */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.9); }
+}
+
+.card-fade-in {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.card-fade-out {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+/* 3D gölge efekti */
+.table-card::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -15px;
+    height: 15px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 70%);
+    z-index: -1;
+    filter: blur(5px);
+    opacity: 0.8;
+    transform: translateZ(-20px);
+    transition: all 0.5s ease;
+}
+
+.table-card:hover::after {
+    transform: translateZ(-30px) translateY(5px);
+    opacity: 0.5;
+}
+
+/* Yeni ışık efektleri */
+.table-card:hover::before {
+    opacity: 1;
+}
+
+/* GitHub Pages Compatibility Fixes */
+.callWaiterButton {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    cursor: pointer !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 8px !important;
+    background-color: var(--neo-primary) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.callWaiterButton:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3) !important;
+}
+
+.callWaiterButton:active {
+    transform: translateY(0) !important;
+}
+
+.callWaiterButton.calling, 
+.callWaiterButton.serving {
+    opacity: 0.7;
+    cursor: not-allowed;
+}

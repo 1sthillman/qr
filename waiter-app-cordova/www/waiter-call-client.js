@@ -10,6 +10,8 @@ let tableId = null;
 let currentCallId = null;
 let isCallActive = false;
 let currentStatus = 'idle';
+let connectionAttempts = 0;
+const MAX_CONNECTION_ATTEMPTS = 3;
 
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', function() {
@@ -22,8 +24,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // table_id veya table parametresi kontrolü
     tableNumber = urlParams.get('table_id') || urlParams.get('table');
     
-    // Değerler yoksa hata göster
+    // Değerler yoksa hata göster ve yükleme ekranını kaldır
     if (!restaurantId || !tableNumber) {
+        hideLoader();
         showError('QR kodda eksik bilgi var. Lütfen geçerli bir QR kod kullanın.');
         console.error('Eksik parametreler:', { restaurantId, tableNumber });
         return;
@@ -32,36 +35,96 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Parametreler alındı:', { restaurantId, tableNumber });
     
     // Supabase'i başlat
-    initSupabase();
-    
-    // Sayfa içeriğini göster
-    document.getElementById('loadingPage').style.display = 'none';
-    document.getElementById('qrPage').style.display = 'flex';
+    if (!initSupabase()) {
+        // Başarısız olsa bile yükleme ekranını kapat
+        hideLoader();
+        return;
+    }
     
     // Masa ve restoran bilgilerini göster
     document.getElementById('tableNumber').textContent = tableNumber;
     document.getElementById('restaurantName').textContent = `Restaurant ${restaurantId}`;
     
     // Masa kaydını kontrol et veya oluştur
-    checkOrCreateTable();
+    checkOrCreateTable()
+        .catch(err => {
+            console.error('Masa kontrolü sırasında hata:', err);
+            showError('Bağlantı hatası. Lütfen sayfayı yenileyin.');
+        })
+        .finally(() => {
+            // İşlem başarılı veya başarısız olsa da yükleme ekranını kaldır
+            hideLoader();
+        });
     
     // Çağrı butonunu ayarla
     setupCallButton();
     
-    // Realtime bağlantıyı kur
-    setupRealtimeConnection();
+    // Yükleme yavaş olsa bile 5 saniye sonra her durumda yükleme ekranını gizle
+    setTimeout(hideLoader, 5000);
 });
+
+// Loader'ı gizle ve ana sayfayı göster
+function hideLoader() {
+    // Yükleme ekranını kademeli olarak gizle
+    const loadingPage = document.getElementById('loadingPage');
+    if (loadingPage) {
+        loadingPage.style.opacity = '0';
+        loadingPage.style.transition = 'opacity 0.5s ease';
+        
+        setTimeout(() => {
+            loadingPage.style.display = 'none';
+        }, 500);
+    }
+    
+    // Ana sayfayı kademeli göster
+    const qrPage = document.getElementById('qrPage');
+    if (qrPage) {
+        qrPage.style.display = 'flex';
+        
+        setTimeout(() => {
+            qrPage.classList.add('visible');
+        }, 50); // Kısa bir gecikme ile CSS transition'ın çalışmasını sağla
+    }
+    
+    // Buton durumunu güncelle
+    updateButtonState();
+}
 
 // Supabase istemcisini başlat
 function initSupabase() {
     try {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('Supabase bağlantısı başarılı');
+        
+        // Supabase ile bağlantıyı test et
+        supabase.from('tables').select('id').limit(1)
+            .then(response => {
+                if (response.error) throw new Error('Supabase bağlantı testi başarısız');
+                console.log('Supabase bağlantı testi başarılı');
+            })
+            .catch(err => {
+                console.error('Supabase bağlantı testi hatası:', err);
+                retrySupabaseConnection();
+            });
+        
         return true;
     } catch (error) {
         console.error('Supabase başlatma hatası:', error);
         showError('Veritabanı bağlantısı kurulamadı. Lütfen tekrar deneyin.');
+        retrySupabaseConnection();
         return false;
+    }
+}
+
+// Supabase bağlantısını yeniden deneme
+function retrySupabaseConnection() {
+    connectionAttempts++;
+    if (connectionAttempts <= MAX_CONNECTION_ATTEMPTS) {
+        console.log(`Supabase bağlantısı yeniden deneniyor (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})...`);
+        setTimeout(initSupabase, 1000);
+    } else {
+        console.error('Maksimum bağlantı deneme sayısına ulaşıldı');
+        showError('Sunucu bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin ve sayfayı yenileyin.');
     }
 }
 
@@ -116,8 +179,12 @@ async function checkOrCreateTable() {
         // Aktif çağrı var mı kontrol et
         checkActiveCall();
         
+        // Realtime bağlantıyı kur
+        setupRealtimeConnection();
+        
     } catch (err) {
         console.error('Masa kontrolü hatası:', err);
+        throw err;
     }
 }
 
