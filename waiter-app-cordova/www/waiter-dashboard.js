@@ -493,34 +493,86 @@ function setupTableSearch() {
 
 // Aktif çağrıları kontrol et
 async function checkActiveCalls() {
-    if (!supabase || !restaurantId) return;
+    if (!supabase || !restaurantId) {
+        console.error('Aktif çağrı kontrolü için Supabase veya Restaurant ID eksik');
+        return;
+    }
     
     try {
         console.log('Aktif çağrılar kontrol ediliyor...');
         
-        // 1. Çağrı yapan masaları al
-        const { data: tables, error: tablesError } = await supabase
+        // 1. Önce tüm masaları 'calling' durumunda olanları al
+        const { data: callingTables, error: tablesError } = await supabase
             .from('tables')
-            .select('*')
+            .select('id, table_id, number')
             .eq('restaurant_id', restaurantId)
             .eq('status', 'calling');
             
         if (tablesError) {
-            console.error('Masa listesi alınamadı:', tablesError);
+            console.error('Çağrı yapan masalar alınamadı:', tablesError);
             return;
         }
         
-        console.log('Çağrı yapan masalar:', tables);
-        
-        // Çağrı yapan masa varsa bildirim göster
-        if (tables && tables.length > 0) {
-            tables.forEach(table => {
-                const tableNumber = table.number || table.table_id;
-                playNotificationSound();
-                showCallNotification(tableNumber);
-            });
+        if (!callingTables || callingTables.length === 0) {
+            console.log('Aktif çağrı yapan masa yok');
+            return;
         }
         
+        console.log('Çağrı yapan masalar:', callingTables);
+        
+        // 2. Her çağrı yapan masa için son çağrıyı kontrol et
+        for (const table of callingTables) {
+            const tableNumber = table.number || table.table_id;
+            
+            // Son çağrıyı kontrol et
+            const { data: lastCall, error: callError } = await supabase
+                .from('calls')
+                .select('id, status, created_at')
+                .eq('table_id', table.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+                
+            if (callError && callError.code !== 'PGRST116') { // PGRST116: No rows returned
+                console.error(`Masa ${tableNumber} için son çağrı alınamadı:`, callError);
+                continue;
+            }
+            
+            // Çağrı yoksa veya son çağrı 30 dakikadan eskiyse, masa durumunu sıfırla
+            const shouldResetTable = !lastCall || 
+                (new Date() - new Date(lastCall.created_at) > 30 * 60 * 1000); // 30 dakika
+                
+            if (shouldResetTable) {
+                console.log(`Masa ${tableNumber} için aktif çağrı bulunamadı veya çok eski. Durum sıfırlanıyor.`);
+                
+                // Masa durumunu 'idle' olarak güncelle
+                const { error: updateError } = await supabase
+                    .from('tables')
+                    .update({ status: 'idle' })
+                    .eq('id', table.id);
+                    
+                if (updateError) {
+                    console.error(`Masa ${tableNumber} durumu sıfırlanamadı:`, updateError);
+                } else {
+                    console.log(`Masa ${tableNumber} durumu 'idle' olarak güncellendi`);
+                }
+            } else {
+                // Aktif çağrı var, bildirimi göster
+                console.log(`Masa ${tableNumber} için aktif çağrı bulundu:`, lastCall);
+                
+                // Ses çal
+                playNotificationSound();
+                
+                // Bildirimi göster
+                showCallNotification(tableNumber);
+                
+                // Masaları güncelle
+                updateTableStatus(tableNumber, 'calling');
+                
+                // Modal göster
+                showCallModal(tableNumber);
+            }
+        }
     } catch (error) {
         console.error('Aktif çağrı kontrolü hatası:', error);
     }
