@@ -11,6 +11,29 @@ let audioPlayer = null;
 let connectionRetries = 0;
 const MAX_RETRIES = 3;
 
+// DOM elementleri
+const loginPage = document.getElementById('login-page');
+const dashboardPage = document.getElementById('dashboard-page');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const restaurantIdInput = document.getElementById('restaurant-id');
+const passwordInput = document.getElementById('password');
+const loginError = document.getElementById('login-error');
+const restaurantNameDisplay = document.getElementById('restaurant-name');
+const callsContainer = document.getElementById('calls-container');
+const emptyState = document.getElementById('empty-state');
+const notificationElement = document.getElementById('notification');
+const notificationSound = document.getElementById('notification-sound');
+
+// Filtre butonları
+const filterBtns = document.querySelectorAll('.filter-btn');
+
+// Durum değişkenleri
+let currentRestaurantId = null;
+let currentRestaurantName = '';
+let activeFilter = 'all';
+let subscription = null;
+
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('Garson paneli yükleniyor...');
@@ -35,47 +58,37 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-// Supabase bağlantısını başlat
-async function initSupabase() {
-    try {
-        // Supabase kütüphanesinin yüklendiğinden emin ol
-        if (typeof window.supabase === 'undefined') {
-            console.error('Supabase kütüphanesi yüklenemedi');
-            showError('Veritabanı bağlantısı kurulamadı. Sayfayı yenileyin.');
-            return false;
+// Supabase bağlantısı
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Olay dinleyicileri
+function setupEventListeners() {
+    // Giriş butonu
+    loginBtn.addEventListener('click', handleLogin);
+
+    // Çıkış butonu
+    logoutBtn.addEventListener('click', handleLogout);
+
+    // Enter tuşu ile giriş
+    passwordInput.addEventListener('keyup', (event) => {
+        if (event.key === 'Enter') {
+            handleLogin();
         }
-        
-        // Supabase client oluştur
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('Supabase bağlantısı başarılı');
-        
-        // Bağlantı durumunu dinle
-        supabase.realtime.onOpen(() => {
-            console.log('Realtime bağlantı açıldı');
-            connectionRetries = 0; // Bağlantı başarılı olduğunda sayacı sıfırla
+    });
+
+    // Filtre butonları
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            activeFilter = btn.getAttribute('data-filter');
+            
+            // Active class'ı güncelle
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Çağrıları filtrele
+            loadCalls();
         });
-        
-        supabase.realtime.onClose(() => {
-            console.log('Realtime bağlantı kapandı');
-            if (connectionRetries < MAX_RETRIES) {
-                connectionRetries++;
-                console.log(`Yeniden bağlanmaya çalışılıyor... (${connectionRetries}/${MAX_RETRIES})`);
-                setTimeout(() => {
-                    if (restaurantId) {
-                        listenForTableChanges();
-                    }
-                }, 2000); // 2 saniye sonra tekrar dene
-            } else {
-                showError('Sunucu bağlantısı kesildi. Lütfen sayfayı yenileyin.');
-            }
-        });
-        
-        return true;
-    } catch (error) {
-        console.error('Supabase başlatma hatası:', error);
-        showError('Veritabanı bağlantısı kurulamadı. Sayfayı yenileyin.');
-        return false;
-    }
+    });
 }
 
 // Giriş işlemi
@@ -569,5 +582,230 @@ function showSuccess(message) {
     
     setTimeout(() => {
         successToast.classList.add('hidden');
+    }, 5000);
+}
+
+// Çağrıları yükle
+async function loadCalls() {
+    try {
+        // Restoran ID'sine göre tüm masaları al
+        const { data: tables, error: tablesError } = await supabase
+            .from('tables')
+            .select('id, number')
+            .eq('restaurant_id', currentRestaurantId);
+            
+        if (tablesError) {
+            console.error('Masa verileri alınamadı:', tablesError);
+            return;
+        }
+        
+        // Masa ID'lerini al
+        const tableIds = tables.map(table => table.id);
+        
+        // Masa ID'lerine göre çağrıları al
+        let query = supabase
+            .from('calls')
+            .select('id, status, created_at, acknowledged_at, table_id');
+            
+        // Filtreleme
+        if (activeFilter === 'requested') {
+            query = query.eq('status', 'requested');
+        } else if (activeFilter === 'acknowledged') {
+            query = query.eq('status', 'acknowledged');
+        }
+        
+        query = query.in('table_id', tableIds)
+            .order('created_at', { ascending: false });
+            
+        const { data: calls, error: callsError } = await query;
+        
+        if (callsError) {
+            console.error('Çağrı verileri alınamadı:', callsError);
+            return;
+        }
+        
+        // Çağrıları görüntüle
+        displayCalls(calls, tables);
+        
+    } catch (error) {
+        console.error('Veri yükleme hatası:', error);
+    }
+}
+
+// Çağrıları görüntüleme
+function displayCalls(calls, tables) {
+    // Önce container'ı temizle
+    callsContainer.innerHTML = '';
+    
+    // Çağrı yoksa boş durum göster
+    if (!calls || calls.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+    }
+    
+    emptyState.classList.add('hidden');
+    
+    // Her çağrı için kart oluştur
+    calls.forEach(call => {
+        // Masa bilgisini bul
+        const table = tables.find(t => t.id === call.table_id);
+        if (!table) return;
+        
+        // Zaman formatla
+        const callTime = new Date(call.created_at);
+        const formattedTime = callTime.toLocaleTimeString('tr-TR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        // Kart elementi
+        const callCard = document.createElement('div');
+        callCard.className = `call-card ${call.status === 'acknowledged' ? 'acknowledged' : ''}`;
+        callCard.setAttribute('data-call-id', call.id);
+        
+        // Kart içeriği
+        callCard.innerHTML = `
+            <div class="call-header">
+                <span class="table-number">Masa ${table.number}</span>
+                <span class="call-time">${formattedTime}</span>
+            </div>
+            <div class="call-status">
+                ${call.status === 'requested' 
+                    ? '<p>Garson çağrısı bekliyor</p>' 
+                    : '<p>Garson yanıt verdi</p>'}
+            </div>
+            <div class="call-actions">
+                ${call.status === 'requested' 
+                    ? `<button class="call-btn acknowledge-btn" data-call-id="${call.id}">Geliyorum</button>` 
+                    : `<button class="call-btn complete-btn" data-call-id="${call.id}">Tamamlandı</button>`}
+                <button class="call-btn cancel-btn" data-call-id="${call.id}">İptal</button>
+            </div>
+        `;
+        
+        // Event listeners ekle
+        callCard.querySelector('.acknowledge-btn')?.addEventListener('click', (e) => {
+            acknowledgeCall(e.target.getAttribute('data-call-id'));
+        });
+        
+        callCard.querySelector('.complete-btn')?.addEventListener('click', (e) => {
+            completeCall(e.target.getAttribute('data-call-id'));
+        });
+        
+        callCard.querySelector('.cancel-btn').addEventListener('click', (e) => {
+            cancelCall(e.target.getAttribute('data-call-id'));
+        });
+        
+        // Kart'ı container'a ekle
+        callsContainer.appendChild(callCard);
+    });
+}
+
+// Çağrıyı tamamla
+async function completeCall(callId) {
+    try {
+        // Çağrıyı çıkart veya arşivle
+        const { error } = await supabase
+            .from('calls')
+            .update({
+                status: 'done'
+            })
+            .eq('id', callId);
+            
+        if (error) {
+            console.error('Çağrı tamamlama hatası:', error);
+            return;
+        }
+        
+        // UI güncelle
+        const callCard = document.querySelector(`.call-card[data-call-id="${callId}"]`);
+        if (callCard) {
+            callCard.remove();
+        }
+        
+        // Boş durum kontrolü
+        if (callsContainer.children.length === 0) {
+            emptyState.classList.remove('hidden');
+        }
+        
+    } catch (error) {
+        console.error('Çağrı tamamlama işlemi hatası:', error);
+    }
+}
+
+// Çağrıyı iptal et
+async function cancelCall(callId) {
+    try {
+        // Çağrıyı sil veya durumunu değiştir
+        const { error } = await supabase
+            .from('calls')
+            .delete()
+            .eq('id', callId);
+            
+        if (error) {
+            console.error('Çağrı iptal hatası:', error);
+            return;
+        }
+        
+        // UI güncelle
+        const callCard = document.querySelector(`.call-card[data-call-id="${callId}"]`);
+        if (callCard) {
+            callCard.remove();
+        }
+        
+        // Boş durum kontrolü
+        if (callsContainer.children.length === 0) {
+            emptyState.classList.remove('hidden');
+        }
+        
+    } catch (error) {
+        console.error('Çağrı iptal işlemi hatası:', error);
+    }
+}
+
+// Realtime bağlantı kurma
+function setupRealtimeConnection() {
+    // Önceki aboneliği temizle
+    if (subscription) {
+        subscription.unsubscribe();
+    }
+    
+    // Tüm restoran çağrılarını dinle
+    subscription = supabase
+        .channel('public:calls')
+        .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'calls'
+        }, handleRealtimeEvent)
+        .subscribe();
+}
+
+// Realtime olaylarını işle
+async function handleRealtimeEvent(payload) {
+    console.log('Realtime olay:', payload);
+    
+    // Verileri yenile
+    await loadCalls();
+    
+    // Yeni çağrı geldiğinde bildirim göster
+    if (payload.eventType === 'INSERT' && payload.new.status === 'requested') {
+        showNotification();
+    }
+}
+
+// Bildirim göster
+function showNotification() {
+    // Ses çal
+    notificationSound.play().catch(error => {
+        console.error('Ses çalma hatası:', error);
+    });
+    
+    // Bildirim göster
+    notificationElement.textContent = 'Yeni bir çağrı geldi!';
+    notificationElement.classList.add('show');
+    
+    // 5 saniye sonra gizle
+    setTimeout(() => {
+        notificationElement.classList.remove('show');
     }, 5000);
 } 
