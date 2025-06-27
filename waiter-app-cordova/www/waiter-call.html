@@ -33,76 +33,46 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
     <link rel="stylesheet" href="css/index.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-black text-white min-h-screen font-inter">
-    <div class="min-h-screen flex flex-col bg-gradient-to-b from-[#151525]/80 to-black/80">
-        <!-- Yükleme ekranı -->
-        <div id="loadingPage" class="absolute inset-0 flex flex-col items-center justify-center bg-black z-50">
-            <div class="w-16 h-16 mb-4 relative">
-                <div class="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <div class="absolute inset-2 border-4 border-white border-b-transparent rounded-full animate-spin animation-delay-150"></div>
-            </div>
-            <p class="text-gray-400">Yükleniyor...</p>
-        </div>
-        
-        <!-- Hata mesajı -->
-        <div id="errorAlert" class="hidden fixed top-4 left-0 right-0 mx-auto w-11/12 max-w-md bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 text-center">
-            Bir hata oluştu. Lütfen sayfayı yenileyin.
-        </div>
-        
-        <!-- Başarı mesajı -->
-        <div id="successAlert" class="hidden fixed top-4 left-0 right-0 mx-auto w-11/12 max-w-md bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 text-center">
-            İşlem başarıyla tamamlandı.
-        </div>
-        
-        <!-- Garson yanıt mesajı -->
-        <div id="waiterResponseAlert" class="hidden fixed top-4 left-0 right-0 mx-auto w-11/12 max-w-md bg-primary text-white px-4 py-3 rounded-lg shadow-lg z-50 text-center">
-            Garsonunuz geliyor!
-        </div>
-        
-        <!-- Ana sayfa -->
-        <div id="qrPage" class="hidden min-h-screen flex flex-col">
-            <header class="p-5 border-b border-gray-800 flex justify-between items-center bg-black bg-opacity-60 backdrop-blur-lg">
-                <div class="flex items-center">
-                    <i class="ri-restaurant-line text-primary text-3xl mr-3"></i>
-                    <h2 class="text-2xl font-bold text-white">Masa <span id="tableNumber">5</span></h2>
-                </div>
-                <div>
-                    <h3 id="restaurantName" class="text-lg font-medium">Restaurant Adı</h3>
-                </div>
-            </header>
-
-            <main class="flex-1 flex flex-col p-6">
-                <div class="flex-1 flex justify-center items-center">
-                    <button id="callWaiterButton" class="w-64 h-64 bg-glass-bg backdrop-blur-glass border border-glass-border rounded-full flex flex-col justify-center items-center relative overflow-hidden group">
-                        <div class="relative z-10">
-                            <i class="ri-user-voice-line text-primary text-5xl mb-4"></i>
-                            <div class="text-xl font-semibold">GARSONU ÇAĞIR</div>
-                        </div>
-                        
-                        <!-- Dalga animasyonları -->
-                        <div class="wave-container absolute inset-0 z-0">
-                            <div class="wave wave1"></div>
-                            <div class="wave wave2"></div>
-                            <div class="wave wave3"></div>
-                        </div>
-                        
-                        <!-- Hover efekti için glow -->
-                        <div class="absolute inset-0 bg-primary opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-20"></div>
-                    </button>
-                </div>
-            </main>
-            
-            <footer class="p-4 border-t border-gray-800 bg-black bg-opacity-60 backdrop-blur-lg text-center">
-                <p class="text-gray-400 text-sm">Garson çağırmak için butona tıklayın</p>
-            </footer>
+<body class="bg-secondary text-white min-h-screen flex flex-col">
+    <!-- Yükleme Ekranı -->
+    <div id="loadingPage" class="fixed inset-0 bg-secondary flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-primary mb-4"></div>
+            <p class="text-white">Yükleniyor...</p>
         </div>
     </div>
-
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Waiter Call Client -->
+    <!-- Ana Sayfa -->
+    <div id="qrPage" class="container mx-auto px-4 py-8 flex-1 flex flex-col" style="display: none;">
+        <header class="mb-8 text-center">
+            <h1 id="restaurantName" class="text-2xl font-bold mb-1">Restaurant</h1>
+            <p class="text-gray-400">Masa <span id="tableNumber" class="font-bold">0</span></p>
+        </header>
+        
+        <main class="flex-1 flex flex-col items-center justify-center">
+            <div class="w-full max-w-md bg-glass-bg border border-glass-border backdrop-blur-glass rounded-xl p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4">Garson Çağırma</h2>
+                <p class="text-gray-300 mb-6">Garsona ihtiyacınız olduğunda aşağıdaki butona tıklayarak çağırabilirsiniz.</p>
+                
+                <button id="callWaiterButton" class="w-full bg-primary hover:bg-primary/80 text-white font-medium py-3 px-4 rounded-lg transition-all flex items-center justify-center">
+                    <i class="ri-user-voice-line mr-2"></i> Garsonu Çağır
+                </button>
+            </div>
+            
+            <!-- Bildirimler -->
+            <div id="errorAlert" class="w-full max-w-md bg-red-500/20 border border-red-500/30 text-red-100 p-4 rounded-lg mb-4" style="display: none;"></div>
+            <div id="successAlert" class="w-full max-w-md bg-green-500/20 border border-green-500/30 text-green-100 p-4 rounded-lg mb-4" style="display: none;"></div>
+            <div id="waiterResponseAlert" class="w-full max-w-md bg-blue-500/20 border border-blue-500/30 text-blue-100 p-4 rounded-lg mb-4" style="display: none;"></div>
+        </main>
+        
+        <footer class="mt-auto pt-8 text-center text-gray-400 text-sm">
+            <p>QR Garson Çağırma Sistemi</p>
+        </footer>
+    </div>
+    
     <script src="waiter-call-client.js"></script>
 </body>
 </html> 
