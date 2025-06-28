@@ -46,6 +46,54 @@
             </button>
         </div>
         
+        <!-- Abonelik Bilgisi -->
+        <div id="subscriptionInfo" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4">Abonelik Bilgisi</h2>
+            <div class="flex items-center mb-4">
+                <div class="w-3 h-3 rounded-full mr-2" id="statusIndicator"></div>
+                <span id="planStatus" class="font-medium"></span>
+            </div>
+            <div class="mb-4">
+                <span class="text-gray-600">Plan Türü:</span>
+                <span id="planType" class="ml-2 font-medium"></span>
+            </div>
+            <div class="mb-4">
+                <span class="text-gray-600">Masa Limiti:</span>
+                <span id="tableLimit" class="ml-2 font-medium"></span>
+            </div>
+            <div class="mb-4" id="expiryContainer">
+                <span class="text-gray-600">Bitiş Tarihi:</span>
+                <span id="expiryDate" class="ml-2 font-medium"></span>
+            </div>
+            
+            <div id="trialWarning" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 hidden">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="ri-information-line text-yellow-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700" id="trialMessage"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="expiredWarning" class="bg-red-50 border-l-4 border-red-400 p-4 mb-4 hidden">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="ri-error-warning-line text-red-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-red-700">Deneme süreniz sona ermiş veya aboneliğiniz iptal edilmiştir. Hizmeti kullanmaya devam etmek için lütfen bir abonelik planı satın alın.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <a href="#" id="upgradePlanButton" class="block w-full bg-secondary text-white text-center py-3 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                <i class="ri-arrow-up-line mr-2"></i>
+                Planı Yükselt
+            </a>
+        </div>
+        
         <div id="qrCodesContainer" class="hidden">
             <h2 class="text-xl font-semibold mb-4">Oluşturulan QR Kodlar</h2>
             
@@ -80,11 +128,114 @@
             const generateButton = document.getElementById('generateButton');
             const printAllButton = document.getElementById('printAllButton');
             const downloadAllButton = document.getElementById('downloadAllButton');
+            const upgradePlanButton = document.getElementById('upgradePlanButton');
             
             generateButton.addEventListener('click', generateQRCodes);
             printAllButton.addEventListener('click', printAllQRCodes);
             downloadAllButton.addEventListener('click', downloadAllQRCodes);
+            upgradePlanButton.addEventListener('click', openUpgradePage);
+            
+            // Restoran ID değiştiğinde abonelik bilgisini kontrol et
+            document.getElementById('restaurantId').addEventListener('blur', checkSubscription);
         });
+        
+        // Abonelik sayfasını aç
+        function openUpgradePage() {
+            const restaurantId = document.getElementById('restaurantId').value.trim();
+            if (!restaurantId) {
+                alert('Lütfen önce Restoran ID girin.');
+                return;
+            }
+            
+            // Burada ödeme sayfasına yönlendirme yapılacak
+            // Gerçek uygulamada bu URL'yi kendi ödeme sayfanıza göre değiştirin
+            window.open(`/payment.html?restaurant_id=${restaurantId}`, '_blank');
+        }
+        
+        // Abonelik bilgilerini kontrol et
+        async function checkSubscription() {
+            const restaurantId = document.getElementById('restaurantId').value.trim();
+            if (!restaurantId) return;
+            
+            try {
+                // Restoran bilgilerini al
+                const { data: restaurant, error } = await supabase
+                    .from('restaurants')
+                    .select('*, subscription_plans(*)')
+                    .eq('id', restaurantId)
+                    .single();
+                    
+                if (error) throw error;
+                
+                if (restaurant) {
+                    // Restoran adını otomatik doldur
+                    document.getElementById('restaurantName').value = restaurant.name;
+                    
+                    // Abonelik bilgilerini göster
+                    const subscriptionInfo = document.getElementById('subscriptionInfo');
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    const planStatus = document.getElementById('planStatus');
+                    const planType = document.getElementById('planType');
+                    const tableLimit = document.getElementById('tableLimit');
+                    const expiryDate = document.getElementById('expiryDate');
+                    const trialWarning = document.getElementById('trialWarning');
+                    const trialMessage = document.getElementById('trialMessage');
+                    const expiredWarning = document.getElementById('expiredWarning');
+                    const expiryContainer = document.getElementById('expiryContainer');
+                    
+                    subscriptionInfo.classList.remove('hidden');
+                    
+                    // Plan türü ve durum bilgisi
+                    if (restaurant.is_active) {
+                        statusIndicator.classList.add('bg-green-500');
+                        planStatus.textContent = 'Aktif';
+                        planStatus.classList.add('text-green-500');
+                    } else {
+                        statusIndicator.classList.add('bg-red-500');
+                        planStatus.textContent = 'Pasif';
+                        planStatus.classList.add('text-red-500');
+                        expiredWarning.classList.remove('hidden');
+                    }
+                    
+                    // Plan türü
+                    if (restaurant.plan_type === 'trial') {
+                        planType.textContent = 'Deneme Sürümü';
+                        
+                        // Deneme süresi kalan gün hesaplama
+                        const today = new Date();
+                        const expiry = new Date(restaurant.plan_expiry_date);
+                        const diffTime = Math.abs(expiry - today);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        if (expiry > today) {
+                            trialWarning.classList.remove('hidden');
+                            trialMessage.textContent = `Deneme sürenizin bitmesine ${diffDays} gün kaldı. Hizmeti kullanmaya devam etmek için lütfen bir abonelik planı satın alın.`;
+                        }
+                        
+                        expiryContainer.classList.remove('hidden');
+                        expiryDate.textContent = new Date(restaurant.plan_expiry_date).toLocaleDateString('tr-TR');
+                    } else if (restaurant.plan_type === 'paid') {
+                        planType.textContent = 'Ücretli Abonelik';
+                        expiryContainer.classList.add('hidden');
+                    } else {
+                        planType.textContent = 'Bilinmiyor';
+                    }
+                    
+                    // Masa limiti
+                    tableLimit.textContent = `${restaurant.max_tables} masa`;
+                    
+                    // Masa sayısı inputunu sınırla
+                    const tableCountInput = document.getElementById('tableCount');
+                    tableCountInput.max = restaurant.max_tables;
+                    if (parseInt(tableCountInput.value) > restaurant.max_tables) {
+                        tableCountInput.value = restaurant.max_tables;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Abonelik bilgisi alınamadı:', error);
+            }
+        }
         
         // QR kodları oluştur
         async function generateQRCodes() {
@@ -107,7 +258,7 @@
                 // Restoran kaydını kontrol et veya oluştur
                 const { data: existingRestaurant, error: checkError } = await supabase
                     .from('restaurants')
-                    .select('id')
+                    .select('id, is_active, max_tables')
                     .eq('id', restaurantId)
                     .single();
                     
@@ -122,10 +273,26 @@
                         .insert({
                             id: restaurantId,
                             name: restaurantName,
-                            plan: 'free'
+                            plan: 'free',
+                            plan_type: 'trial',
+                            plan_expiry_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+                            max_tables: 10,
+                            is_active: true
                         });
                         
                     if (createError) throw createError;
+                } else {
+                    // Abonelik durumunu kontrol et
+                    if (!existingRestaurant.is_active) {
+                        alert('Aboneliğiniz aktif değil. Lütfen abonelik planınızı yükseltin.');
+                        return;
+                    }
+                    
+                    // Masa sayısı limitini kontrol et
+                    if (tableCount > existingRestaurant.max_tables) {
+                        alert(`Masa sayısı limitiniz ${existingRestaurant.max_tables}. Daha fazla masa için planınızı yükseltin.`);
+                        return;
+                    }
                 }
                 
                 // QR kodları oluştur

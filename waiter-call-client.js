@@ -13,6 +13,8 @@ let tableId = null;
 let tableNumber = null;
 let isCallActive = false;
 let currentStatus = 'idle';
+let connectionRetries = 0;
+const MAX_RETRIES = 3;
 
 // Sayfa yüklendiğinde çalış
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,6 +36,23 @@ async function initWaiterCallPage() {
         
         // Supabase bağlantısını oluştur
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Bağlantı durumunu dinle
+        supabase.realtime.onOpen(() => {
+            console.log('Realtime bağlantı açıldı');
+            connectionRetries = 0; // Bağlantı başarılı olduğunda sayacı sıfırla
+        });
+        
+        supabase.realtime.onClose(() => {
+            console.log('Realtime bağlantı kapandı');
+            if (connectionRetries < MAX_RETRIES) {
+                connectionRetries++;
+                console.log(`Yeniden bağlanmaya çalışılıyor... (${connectionRetries}/${MAX_RETRIES})`);
+                setTimeout(() => setupRealtimeConnection(), 2000); // 2 saniye sonra tekrar dene
+            } else {
+                showError('Sunucu bağlantısı kesildi. Lütfen sayfayı yenileyin.');
+            }
+        });
         
         // Hata ayıklama için
         console.log('Supabase bağlantısı kuruldu');
@@ -101,7 +120,7 @@ async function checkOrCreateTable() {
             .from('tables')
             .select('id, status')
             .eq('restaurant_id', restaurantId)
-            .eq('number', parseInt(tableNumber))
+            .eq('number', parseInt(tableNumber, 10))
             .single();
         
         if (error && error.code !== 'PGRST116') { // PGRST116: No rows returned
@@ -120,7 +139,7 @@ async function checkOrCreateTable() {
                 .from('tables')
                 .insert({
                     restaurant_id: restaurantId,
-                    number: parseInt(tableNumber),
+                    number: parseInt(tableNumber, 10),
                     status: 'idle'
                 })
                 .select()
@@ -218,51 +237,58 @@ function setupRealtimeConnection() {
     
     try {
         // 1. Çağrı durumunu dinle
-        callChannel = supabase
-            .channel('call-status-changes')
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'calls',
-                filter: currentCallId ? `id=eq.${currentCallId}` : undefined
-            }, (payload) => {
-                console.log('Çağrı durumu değişti:', payload);
-                
-                if (payload.new.status === 'acknowledged') {
-                    showWaiterResponse('Garsonunuz geliyor!');
-                    isCallActive = false;
-                    updateButtonState();
-                }
-            })
-            .subscribe(status => {
-                console.log('Çağrı kanalı durumu:', status);
-            });
+        if (currentCallId) {
+            callChannel = supabase
+                .channel(`call-status-${currentCallId}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'calls',
+                    filter: `id=eq.${currentCallId}`
+                }, (payload) => {
+                    console.log('Çağrı durumu değişti:', payload);
+                    
+                    if (payload.new.status === 'acknowledged') {
+                        showWaiterResponse('Garsonunuz geliyor!');
+                        isCallActive = false;
+                        updateButtonState();
+                    } else if (payload.new.status === 'completed') {
+                        isCallActive = false;
+                        updateButtonState();
+                    }
+                })
+                .subscribe(status => {
+                    console.log(`Çağrı kanalı durumu (ID: ${currentCallId}):`, status);
+                });
+        }
             
         // 2. Masa durumunu dinle
-        tableChannel = supabase
-            .channel('table-status-changes')
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'tables',
-                filter: `id=eq.${tableId}`
-            }, (payload) => {
-                console.log('Masa durumu değişti:', payload);
-                
-                if (payload.new.status === 'serving') {
-                    showWaiterResponse('Garsonunuz geliyor!');
-                    isCallActive = false;
-                    currentStatus = 'serving';
-                    updateButtonState();
-                } else if (payload.new.status === 'idle') {
-                    isCallActive = false;
-                    currentStatus = 'idle';
-                    updateButtonState();
-                }
-            })
-            .subscribe(status => {
-                console.log('Masa kanalı durumu:', status);
-            });
+        if (tableId) {
+            tableChannel = supabase
+                .channel(`table-status-${tableId}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'tables',
+                    filter: `id=eq.${tableId}`
+                }, (payload) => {
+                    console.log('Masa durumu değişti:', payload);
+                    
+                    if (payload.new.status === 'serving') {
+                        showWaiterResponse('Garsonunuz geliyor!');
+                        isCallActive = false;
+                        currentStatus = 'serving';
+                        updateButtonState();
+                    } else if (payload.new.status === 'idle') {
+                        isCallActive = false;
+                        currentStatus = 'idle';
+                        updateButtonState();
+                    }
+                })
+                .subscribe(status => {
+                    console.log(`Masa kanalı durumu (ID: ${tableId}):`, status);
+                });
+        }
     } catch (error) {
         console.error('Realtime bağlantı hatası:', error);
     }

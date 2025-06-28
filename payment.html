@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Garson Çağırma - Abonelik Planları</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#FF6B35',secondary:'#3A86FF'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-12 max-w-6xl">
+        <div class="text-center mb-12">
+            <i class="ri-qr-code-line text-5xl text-primary"></i>
+            <h1 class="text-3xl font-bold mt-2">QR Garson Çağırma Sistemi</h1>
+            <p class="text-gray-600 mt-2">Abonelik Planları</p>
+        </div>
+
+        <div class="mb-8">
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="ri-information-line text-blue-400 text-xl"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-lg font-medium text-blue-800">10 Günlük Ücretsiz Deneme</h3>
+                        <p class="text-blue-700 mt-1">QR Garson Çağırma sistemini 10 gün boyunca ücretsiz deneyebilirsiniz. Deneme süresi sonunda hizmeti kullanmaya devam etmek için aşağıdaki abonelik planlarından birini seçebilirsiniz.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Abonelik Planları -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Plan 1 -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 transition-transform hover:transform hover:scale-105">
+                <div class="bg-primary p-6 text-white text-center">
+                    <h2 class="text-xl font-bold">Küçük</h2>
+                    <p class="text-3xl font-bold mt-2">₺250<span class="text-sm font-normal">/ay</span></p>
+                </div>
+                <div class="p-6">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>10 masa kapasitesi</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Sınırsız QR kod oluşturma</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Garson çağrı bildirimleri</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Temel destek</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-primary text-white py-3 rounded-button font-medium hover:bg-opacity-90 transition-all mt-6 select-plan" data-plan="small" data-price="250" data-tables="10">
+                        Planı Seç
+                    </button>
+                </div>
+            </div>
+
+            <!-- Plan 2 -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 transition-transform hover:transform hover:scale-105">
+                <div class="bg-secondary p-6 text-white text-center">
+                    <h2 class="text-xl font-bold">Orta</h2>
+                    <p class="text-3xl font-bold mt-2">₺450<span class="text-sm font-normal">/ay</span></p>
+                </div>
+                <div class="p-6">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>20 masa kapasitesi</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Sınırsız QR kod oluşturma</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Garson çağrı bildirimleri</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Öncelikli destek</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-secondary text-white py-3 rounded-button font-medium hover:bg-opacity-90 transition-all mt-6 select-plan" data-plan="medium" data-price="450" data-tables="20">
+                        Planı Seç
+                    </button>
+                </div>
+            </div>
+
+            <!-- Plan 3 -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 transition-transform hover:transform hover:scale-105">
+                <div class="bg-green-600 p-6 text-white text-center">
+                    <h2 class="text-xl font-bold">Büyük</h2>
+                    <p class="text-3xl font-bold mt-2">₺800<span class="text-sm font-normal">/ay</span></p>
+                </div>
+                <div class="p-6">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>50 masa kapasitesi</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Sınırsız QR kod oluşturma</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Garson çağrı bildirimleri</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>7/24 destek</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-green-600 text-white py-3 rounded-button font-medium hover:bg-opacity-90 transition-all mt-6 select-plan" data-plan="large" data-price="800" data-tables="50">
+                        Planı Seç
+                    </button>
+                </div>
+            </div>
+
+            <!-- Plan 4 -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 transition-transform hover:transform hover:scale-105">
+                <div class="bg-purple-600 p-6 text-white text-center">
+                    <h2 class="text-xl font-bold">Kurumsal</h2>
+                    <p class="text-3xl font-bold mt-2">₺1500<span class="text-sm font-normal">/ay</span></p>
+                </div>
+                <div class="p-6">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>100 masa kapasitesi</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Sınırsız QR kod oluşturma</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>Garson çağrı bildirimleri</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="ri-check-line text-green-500 mr-2"></i>
+                            <span>VIP destek</span>
+                        </li>
+                    </ul>
+                    <button class="w-full bg-purple-600 text-white py-3 rounded-button font-medium hover:bg-opacity-90 transition-all mt-6 select-plan" data-plan="enterprise" data-price="1500" data-tables="100">
+                        Planı Seç
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ödeme Bilgileri -->
+        <div id="paymentSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4">Ödeme Bilgileri</h2>
+            
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-700">Seçilen Plan:</span>
+                    <span id="selectedPlanName" class="font-medium"></span>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-700">Masa Kapasitesi:</span>
+                    <span id="selectedPlanTables" class="font-medium"></span>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-700">Aylık Ücret:</span>
+                    <span id="selectedPlanPrice" class="font-medium"></span>
+                </div>
+                <div class="border-t border-gray-200 my-4 pt-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-800 font-medium">Toplam:</span>
+                        <span id="totalPrice" class="text-lg font-bold text-primary"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-md mb-6">
+                <h3 class="font-medium mb-2">Shopier ile Güvenli Ödeme</h3>
+                <p class="text-gray-600 text-sm mb-4">Ödemeleriniz Shopier altyapısı ile güvenle gerçekleştirilmektedir.</p>
+                <div class="flex items-center space-x-3">
+                    <img src="https://www.shopier.com/ShowProductNew/images/shopier_horizontal_logo.png" alt="Shopier" class="h-8">
+                    <div class="flex items-center space-x-2">
+                        <img src="https://www.mastercard.com.tr/content/dam/public/mastercardcom/tr/tr/images/mastercard-logo-53x32.svg" alt="Mastercard" class="h-6">
+                        <img src="https://www.visa.com.tr/dam/VCOM/regional/ve/romania/blogs/hero-image/visa-logo-800x450.jpg" alt="Visa" class="h-6">
+                    </div>
+                </div>
+            </div>
+            
+            <form id="shopierForm" action="https://www.shopier.com/ShowProduct/api_pay4.php" method="post">
+                <input type="hidden" id="restaurantId" name="restaurant_id">
+                <input type="hidden" id="planId" name="plan_id">
+                <input type="hidden" id="planPrice" name="plan_price">
+                <input type="hidden" id="planTables" name="plan_tables">
+                
+                <!-- Shopier için gerekli alanlar -->
+                <input type="hidden" name="API_key" id="shopier_api_key" value="ba946ce45c717d982cc6decbcb616bb2">
+                <input type="hidden" name="website_index" value="1">
+                <input type="hidden" name="platform_order_id" id="platform_order_id">
+                <input type="hidden" name="product_name" id="product_name">
+                <input type="hidden" name="product_type" value="2">
+                <input type="hidden" name="buyer_name" id="buyer_name">
+                <input type="hidden" name="buyer_surname" id="buyer_surname">
+                <input type="hidden" name="buyer_email" id="buyer_email">
+                <input type="hidden" name="buyer_phone" id="buyer_phone">
+                <input type="hidden" name="buyer_id_nr" id="buyer_id_nr" value="12345">
+                <input type="hidden" name="buyer_account_age" id="buyer_account_age" value="30">
+                <input type="hidden" name="billing_address" id="billing_address" value="Test Adres">
+                <input type="hidden" name="billing_city" id="billing_city" value="İstanbul">
+                <input type="hidden" name="billing_country" id="billing_country" value="TR">
+                <input type="hidden" name="billing_postcode" id="billing_postcode" value="34000">
+                <input type="hidden" name="shipping_address" id="shipping_address" value="Test Adres">
+                <input type="hidden" name="shipping_city" id="shipping_city" value="İstanbul">
+                <input type="hidden" name="shipping_country" id="shipping_country" value="TR">
+                <input type="hidden" name="shipping_postcode" id="shipping_postcode" value="34000">
+                <input type="hidden" name="total_order_value" id="total_order_value">
+                <input type="hidden" name="currency" value="0">
+                <input type="hidden" name="platform" value="0">
+                <input type="hidden" name="is_in_frame" value="0">
+                <input type="hidden" name="current_language" value="0">
+                <input type="hidden" name="modul_version" value="1.0.0">
+                <input type="hidden" name="random_nr" id="random_nr">
+                <input type="hidden" name="signature" id="signature">
+                <input type="hidden" name="custom_data" id="custom_data">
+                
+                <button type="button" id="paymentButton" class="w-full bg-primary text-white py-3 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                    <i class="ri-secure-payment-line mr-2"></i>
+                    Ödemeyi Tamamla
+                </button>
+            </form>
+        </div>
+        
+        <!-- SSS -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Sıkça Sorulan Sorular</h2>
+            
+            <div class="space-y-4">
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="font-medium mb-2">10 günlük deneme süresi sonunda ne olur?</h3>
+                    <p class="text-gray-600">Deneme süresi sonunda abonelik planı satın almazsanız, QR kodlarınız çalışmaya devam eder ancak yeni masa ekleyemez ve mevcut masalarınızı yönetemezsiniz. Abonelik planı satın aldığınızda tüm özellikler tekrar aktif olur.</p>
+                </div>
+                
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="font-medium mb-2">Abonelik planımı nasıl değiştirebilirim?</h3>
+                    <p class="text-gray-600">Mevcut abonelik süreniz dolduğunda planınızı değiştirebilirsiniz. Daha yüksek bir plana geçmek isterseniz, fiyat farkını ödeyerek hemen yükseltme yapabilirsiniz.</p>
+                </div>
+                
+                <div class="border-b border-gray-200 pb-4">
+                    <h3 class="font-medium mb-2">Ödeme yöntemleri nelerdir?</h3>
+                    <p class="text-gray-600">Tüm kredi kartları ve banka kartları ile ödeme yapabilirsiniz. Ödemeler Shopier altyapısı üzerinden güvenle gerçekleştirilmektedir.</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium mb-2">İade politikası nedir?</h3>
+                    <p class="text-gray-600">Abonelik başladıktan sonraki 7 gün içinde, hizmetten memnun kalmamanız durumunda iade talep edebilirsiniz. İade talepleriniz için destek ekibimizle iletişime geçebilirsiniz.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script>
+        // Supabase bağlantı bilgileri
+        const SUPABASE_URL = 'https://wihdzkvgttfwsiijxidy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpaGR6a3ZndHRmd3NpaWp4aWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2MzA0MjIsImV4cCI6MjA2NjIwNjQyMn0.Cpn6y7ybyLA3uL-bjvsxPKoIw-J7I6eTE5cPGnBjOo4';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Shopier API bilgileri
+        const SHOPIER_API_KEY = 'ba946ce45c717d982cc6decbcb616bb2';
+        const SHOPIER_API_SECRET = '8a186b6f15655c57c65ec415ae121e69';
+        const SHOPIER_CALLBACK_URL = window.location.origin + '/callback.html';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // URL'den restoran ID'sini al
+            const urlParams = new URLSearchParams(window.location.search);
+            const restaurantId = urlParams.get('restaurant_id');
+            
+            if (restaurantId) {
+                document.getElementById('restaurantId').value = restaurantId;
+                
+                // Restoran bilgilerini al
+                getRestaurantInfo(restaurantId);
+            }
+            
+            // Plan seçim butonlarına event listener ekle
+            document.querySelectorAll('.select-plan').forEach(button => {
+                button.addEventListener('click', () => {
+                    const plan = button.getAttribute('data-plan');
+                    const price = button.getAttribute('data-price');
+                    const tables = button.getAttribute('data-tables');
+                    
+                    selectPlan(plan, price, tables);
+                });
+            });
+            
+            // Ödeme butonuna event listener ekle
+            document.getElementById('paymentButton').addEventListener('click', () => {
+                processPayment();
+            });
+        });
+        
+        // Restoran bilgilerini al
+        async function getRestaurantInfo(restaurantId) {
+            try {
+                const { data: restaurant, error } = await supabase
+                    .from('restaurants')
+                    .select('name, email, phone, plan_type, plan_expiry_date, max_tables, is_active')
+                    .eq('id', restaurantId)
+                    .single();
+                    
+                if (error) throw error;
+                
+                if (restaurant) {
+                    console.log('Restoran bilgileri:', restaurant);
+                    
+                    // Restoran bilgilerini form alanlarına ekle
+                    if (restaurant.name) {
+                        const nameParts = restaurant.name.split(' ');
+                        document.getElementById('buyer_name').value = nameParts[0] || 'Restoran';
+                        document.getElementById('buyer_surname').value = nameParts.slice(1).join(' ') || 'Sahibi';
+                    } else {
+                        document.getElementById('buyer_name').value = 'Restoran';
+                        document.getElementById('buyer_surname').value = 'Sahibi';
+                    }
+                    
+                    document.getElementById('buyer_email').value = restaurant.email || '';
+                    document.getElementById('buyer_phone').value = restaurant.phone || '';
+                    
+                    // Adres bilgilerini doldur
+                    document.getElementById('billing_address').value = 'Restoran Adresi';
+                    document.getElementById('shipping_address').value = 'Restoran Adresi';
+                }
+                
+            } catch (error) {
+                console.error('Restoran bilgisi alınamadı:', error);
+            }
+        }
+        
+        // Plan seçimi
+        function selectPlan(plan, price, tables) {
+            // Plan bilgilerini göster
+            document.getElementById('paymentSection').classList.remove('hidden');
+            
+            // Plan bilgilerini form alanlarına ekle
+            document.getElementById('planId').value = plan;
+            document.getElementById('planPrice').value = price;
+            document.getElementById('planTables').value = tables;
+            document.getElementById('total_order_value').value = price;
+            
+            // Shopier için ürün adı
+            let planName = '';
+            switch (plan) {
+                case 'small': planName = 'Küçük'; break;
+                case 'medium': planName = 'Orta'; break;
+                case 'large': planName = 'Büyük'; break;
+                case 'enterprise': planName = 'Kurumsal'; break;
+            }
+            
+            document.getElementById('product_name').value = `QR Garson Çağırma - ${planName} Plan`;
+            
+            // Plan bilgilerini görüntüle
+            document.getElementById('selectedPlanName').textContent = planName;
+            document.getElementById('selectedPlanTables').textContent = `${tables} masa`;
+            document.getElementById('selectedPlanPrice').textContent = `₺${price}/ay`;
+            document.getElementById('totalPrice').textContent = `₺${price}`;
+            
+            // Sayfayı ödeme bölümüne kaydır
+            document.getElementById('paymentSection').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Ödeme işlemi
+        function processPayment() {
+            const restaurantId = document.getElementById('restaurantId').value;
+            const planId = document.getElementById('planId').value;
+            const planPrice = document.getElementById('planPrice').value;
+            const planTables = document.getElementById('planTables').value;
+            
+            if (!restaurantId || !planId) {
+                alert('Lütfen bir plan seçin ve restoran bilgilerini girin.');
+                return;
+            }
+            
+            // Sipariş numarası oluştur
+            const orderId = 'QR' + Date.now();
+            document.getElementById('platform_order_id').value = orderId;
+            
+            // Rastgele sayı oluştur
+            const randomNumber = Math.floor(100000 + Math.random() * 900000);
+            document.getElementById('random_nr').value = randomNumber;
+            
+            // Özel veriyi ayarla
+            const customData = JSON.stringify({
+                restaurant_id: restaurantId,
+                plan_id: planId,
+                plan_tables: planTables
+            });
+            document.getElementById('custom_data').value = customData;
+            
+            // İmza oluştur
+            const data = randomNumber + orderId + planPrice + '0'; // 0 = TL para birimi
+            const signature = CryptoJS.HmacSHA256(data, SHOPIER_API_SECRET);
+            const signatureBase64 = CryptoJS.enc.Base64.stringify(signature);
+            document.getElementById('signature').value = signatureBase64;
+            
+            // Formu gönder
+            document.getElementById('shopierForm').submit();
+        }
+    </script>
+</body>
+</html> 

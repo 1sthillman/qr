@@ -32,13 +32,74 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .fade-out {
+            animation: fadeOut 0.5s ease-out;
+            opacity: 0;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 4px;
+            text-align: center;
+            font-size: 12px;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        
+        .connection-status.online {
+            background-color: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        
+        .connection-status.offline {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+    </style>
 </head>
 <body class="bg-secondary text-white min-h-screen flex flex-col">
+    <!-- Bağlantı Durumu -->
+    <div id="connectionStatus" class="connection-status online" style="display: none;">
+        <span id="connectionText">Bağlantı kuruldu</span>
+    </div>
+    
     <!-- Yükleme Ekranı -->
     <div id="loadingPage" class="fixed inset-0 bg-secondary flex items-center justify-center z-50">
         <div class="text-center">
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-primary mb-4"></div>
             <p class="text-white">Yükleniyor...</p>
+        </div>
+    </div>
+    
+    <!-- Abonelik Uyarı Ekranı -->
+    <div id="subscriptionWarningPage" class="fixed inset-0 bg-secondary flex items-center justify-center z-50 hidden">
+        <div class="text-center p-6 max-w-md mx-auto bg-glass-bg border border-glass-border backdrop-blur-glass rounded-xl">
+            <div class="text-yellow-500 text-5xl mb-4"><i class="ri-error-warning-line"></i></div>
+            <h2 class="text-xl font-bold mb-2">Abonelik Süresi Dolmuş</h2>
+            <p class="text-gray-300 mb-6">Bu restoranın abonelik süresi dolmuş veya henüz aktifleştirilmemiş. Lütfen restoran yöneticisi ile iletişime geçiniz.</p>
+            <div class="flex justify-center">
+                <button onclick="window.location.href='https://sizin-siteniz.com'" class="bg-primary hover:bg-primary/80 text-white font-medium py-2 px-4 rounded-lg transition-all">
+                    <i class="ri-home-line mr-2"></i> Ana Sayfaya Dön
+                </button>
+            </div>
         </div>
     </div>
     
@@ -60,9 +121,9 @@
             </div>
             
             <!-- Bildirimler -->
-            <div id="errorAlert" class="w-full max-w-md bg-red-500/20 border border-red-500/30 text-red-100 p-4 rounded-lg mb-4 hidden"></div>
-            <div id="successAlert" class="w-full max-w-md bg-green-500/20 border border-green-500/30 text-green-100 p-4 rounded-lg mb-4 hidden"></div>
-            <div id="waiterResponseAlert" class="w-full max-w-md bg-blue-500/20 border border-blue-500/30 text-blue-100 p-4 rounded-lg mb-4 hidden"></div>
+            <div id="errorAlert" class="w-full max-w-md bg-red-500/20 border border-red-500/30 text-red-100 p-4 rounded-lg mb-4 hidden fade-in"></div>
+            <div id="successAlert" class="w-full max-w-md bg-green-500/20 border border-green-500/30 text-green-100 p-4 rounded-lg mb-4 hidden fade-in"></div>
+            <div id="waiterResponseAlert" class="w-full max-w-md bg-blue-500/20 border border-blue-500/30 text-blue-100 p-4 rounded-lg mb-4 hidden fade-in"></div>
         </main>
         
         <footer class="mt-auto pt-8 text-center text-gray-400 text-sm">
@@ -72,6 +133,33 @@
     
     <!-- Supabase JS Kütüphanesi -->
     <script>
+        // Bağlantı durumu kontrolü
+        function updateConnectionStatus(isOnline) {
+            const connectionStatus = document.getElementById('connectionStatus');
+            const connectionText = document.getElementById('connectionText');
+            
+            if (!connectionStatus) return;
+            
+            connectionStatus.style.display = 'block';
+            
+            if (isOnline) {
+                connectionStatus.className = 'connection-status online';
+                connectionText.textContent = 'Bağlantı kuruldu';
+                
+                // 3 saniye sonra gizle
+                setTimeout(() => {
+                    connectionStatus.style.display = 'none';
+                }, 3000);
+            } else {
+                connectionStatus.className = 'connection-status offline';
+                connectionText.textContent = 'Bağlantı kesildi, yeniden bağlanılıyor...';
+            }
+        }
+        
+        // Ağ bağlantısını izle
+        window.addEventListener('online', () => updateConnectionStatus(true));
+        window.addEventListener('offline', () => updateConnectionStatus(false));
+        
         // Supabase JS kütüphanesini dinamik olarak yükle
         function loadSupabaseJS() {
             return new Promise((resolve, reject) => {
@@ -98,27 +186,95 @@
         // Supabase JS'yi yükle ve sonra client JS'yi çalıştır
         loadSupabaseJS()
             .then(() => {
-                // Client JS'yi yükle
-                const clientScript = document.createElement('script');
-                clientScript.src = 'waiter-call-client.js';
-                document.body.appendChild(clientScript);
+                // Önce abonelik durumunu kontrol et
+                const urlParams = new URLSearchParams(window.location.search);
+                const restaurantId = urlParams.get('restaurant_id');
+                
+                if (restaurantId) {
+                    checkSubscriptionStatus(restaurantId);
+                } else {
+                    showLoadingError('Geçersiz QR kod. Restoran bilgisi eksik.');
+                }
             })
             .catch(error => {
                 console.error('Supabase yükleme hatası:', error);
-                const loadingPage = document.getElementById('loadingPage');
-                if (loadingPage) {
-                    loadingPage.innerHTML = `
-                        <div class="text-center p-4">
-                            <div class="text-red-500 text-5xl mb-4"><i class="ri-error-warning-line"></i></div>
-                            <h2 class="text-xl font-bold mb-2">Bağlantı Hatası</h2>
-                            <p class="text-gray-300 mb-4">Sistem bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.</p>
-                            <button onclick="location.reload()" class="bg-primary hover:bg-primary/80 text-white font-medium py-2 px-4 rounded-lg transition-all">
-                                <i class="ri-refresh-line mr-2"></i> Tekrar Dene
-                            </button>
-                        </div>
-                    `;
-                }
+                showLoadingError('Sistem bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
             });
+            
+        // Abonelik durumunu kontrol et
+        function checkSubscriptionStatus(restaurantId) {
+            const SUPABASE_URL = 'https://wihdzkvgttfwsiijxidy.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpaGR6a3ZndHRmd3NpaWp4aWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2MzA0MjIsImV4cCI6MjA2NjIwNjQyMn0.Cpn6y7ybyLA3uL-bjvsxPKoIw-J7I6eTE5cPGnBjOo4';
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            supabase
+                .from('restaurants')
+                .select('is_active, plan_type, plan_expiry_date')
+                .eq('id', restaurantId)
+                .single()
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error('Restoran bilgisi alınamadı:', error);
+                        showLoadingError('Restoran bilgisi bulunamadı. Lütfen QR kodu kontrol edin.');
+                        return;
+                    }
+                    
+                    if (!data) {
+                        showLoadingError('Restoran bulunamadı. Lütfen QR kodu kontrol edin.');
+                        return;
+                    }
+                    
+                    // Abonelik durumunu kontrol et
+                    if (!data.is_active) {
+                        // Abonelik aktif değil, uyarı göster
+                        document.getElementById('loadingPage').classList.add('hidden');
+                        document.getElementById('subscriptionWarningPage').classList.remove('hidden');
+                    } else {
+                        // Deneme süresi dolmuş mu kontrol et
+                        if (data.plan_type === 'trial') {
+                            const expiryDate = new Date(data.plan_expiry_date);
+                            const now = new Date();
+                            
+                            if (expiryDate < now) {
+                                // Deneme süresi dolmuş, uyarı göster
+                                document.getElementById('loadingPage').classList.add('hidden');
+                                document.getElementById('subscriptionWarningPage').classList.remove('hidden');
+                                return;
+                            }
+                        }
+                        
+                        // Abonelik aktif, client JS'yi yükle
+                        const clientScript = document.createElement('script');
+                        clientScript.src = 'waiter-call-client.js';
+                        clientScript.onerror = (error) => {
+                            console.error('Client JS yüklenemedi:', error);
+                            showLoadingError('Uygulama yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
+                        };
+                        document.body.appendChild(clientScript);
+                    }
+                })
+                .catch(error => {
+                    console.error('Abonelik kontrolü hatası:', error);
+                    showLoadingError('Sistem hatası. Lütfen daha sonra tekrar deneyin.');
+                });
+        }
+            
+        // Yükleme hatası göster
+        function showLoadingError(message) {
+            const loadingPage = document.getElementById('loadingPage');
+            if (loadingPage) {
+                loadingPage.innerHTML = `
+                    <div class="text-center p-4">
+                        <div class="text-red-500 text-5xl mb-4"><i class="ri-error-warning-line"></i></div>
+                        <h2 class="text-xl font-bold mb-2">Bağlantı Hatası</h2>
+                        <p class="text-gray-300 mb-4">${message}</p>
+                        <button onclick="location.reload()" class="bg-primary hover:bg-primary/80 text-white font-medium py-2 px-4 rounded-lg transition-all">
+                            <i class="ri-refresh-line mr-2"></i> Tekrar Dene
+                        </button>
+                    </div>
+                `;
+            }
+        }
     </script>
 </body>
 </html> 

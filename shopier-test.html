@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopier Ödeme Test</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#FF6B35',secondary:'#3A86FF'}}}}</script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-12 max-w-lg">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold">Shopier Ödeme Test</h1>
+            <p class="text-gray-600 mt-2">Bu sayfa Shopier entegrasyonunu test etmek için kullanılır.</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-lg font-semibold mb-4">Test Parametreleri</h2>
+            
+            <form id="testForm" class="space-y-4">
+                <div>
+                    <label for="restaurantId" class="block text-sm font-medium text-gray-700 mb-1">Restoran ID</label>
+                    <input type="text" id="restaurantId" name="restaurant_id" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="TEST123" required>
+                </div>
+                
+                <div>
+                    <label for="planSelect" class="block text-sm font-medium text-gray-700 mb-1">Abonelik Planı</label>
+                    <select id="planSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <option value="small" data-price="250" data-tables="10">Küçük (10 masa - 250 TL)</option>
+                        <option value="medium" data-price="450" data-tables="20">Orta (20 masa - 450 TL)</option>
+                        <option value="large" data-price="800" data-tables="50">Büyük (50 masa - 800 TL)</option>
+                        <option value="enterprise" data-price="1500" data-tables="100">Kurumsal (100 masa - 1500 TL)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="buyerName" class="block text-sm font-medium text-gray-700 mb-1">Müşteri Adı</label>
+                    <input type="text" id="buyerName" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="Test" required>
+                </div>
+                
+                <div>
+                    <label for="buyerSurname" class="block text-sm font-medium text-gray-700 mb-1">Müşteri Soyadı</label>
+                    <input type="text" id="buyerSurname" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="Kullanıcı" required>
+                </div>
+                
+                <div>
+                    <label for="buyerEmail" class="block text-sm font-medium text-gray-700 mb-1">E-posta</label>
+                    <input type="email" id="buyerEmail" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="test@example.com" required>
+                </div>
+                
+                <div>
+                    <label for="buyerPhone" class="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                    <input type="text" id="buyerPhone" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="5551234567" required>
+                </div>
+            </form>
+            
+            <div class="mt-6">
+                <button id="testButton" class="w-full bg-primary text-white py-3 px-4 rounded-md font-medium hover:bg-opacity-90 transition-all">
+                    Shopier Ödeme Testini Başlat
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-semibold mb-4">Test Sonuçları</h2>
+            <div id="testResults" class="bg-gray-50 p-4 rounded-md text-sm font-mono h-64 overflow-auto">
+                <p class="text-gray-500">Test başlatıldığında sonuçlar burada görüntülenecektir.</p>
+            </div>
+        </div>
+    </div>
+    
+    <form id="shopierForm" action="https://www.shopier.com/ShowProduct/api_pay4.php" method="post" class="hidden">
+        <input type="hidden" name="API_key" id="shopier_api_key" value="ba946ce45c717d982cc6decbcb616bb2">
+        <input type="hidden" name="website_index" value="1">
+        <input type="hidden" name="platform_order_id" id="platform_order_id">
+        <input type="hidden" name="product_name" id="product_name">
+        <input type="hidden" name="product_type" value="2">
+        <input type="hidden" name="buyer_name" id="form_buyer_name">
+        <input type="hidden" name="buyer_surname" id="form_buyer_surname">
+        <input type="hidden" name="buyer_email" id="form_buyer_email">
+        <input type="hidden" name="buyer_phone" id="form_buyer_phone">
+        <input type="hidden" name="buyer_id_nr" id="buyer_id_nr" value="12345">
+        <input type="hidden" name="buyer_account_age" id="buyer_account_age" value="30">
+        <input type="hidden" name="billing_address" id="billing_address" value="Test Adres">
+        <input type="hidden" name="billing_city" id="billing_city" value="İstanbul">
+        <input type="hidden" name="billing_country" id="billing_country" value="TR">
+        <input type="hidden" name="billing_postcode" id="billing_postcode" value="34000">
+        <input type="hidden" name="shipping_address" id="shipping_address" value="Test Adres">
+        <input type="hidden" name="shipping_city" id="shipping_city" value="İstanbul">
+        <input type="hidden" name="shipping_country" id="shipping_country" value="TR">
+        <input type="hidden" name="shipping_postcode" id="shipping_postcode" value="34000">
+        <input type="hidden" name="total_order_value" id="total_order_value">
+        <input type="hidden" name="currency" value="0">
+        <input type="hidden" name="platform" value="0">
+        <input type="hidden" name="is_in_frame" value="0">
+        <input type="hidden" name="current_language" value="0">
+        <input type="hidden" name="modul_version" value="1.0.0">
+        <input type="hidden" name="random_nr" id="random_nr">
+        <input type="hidden" name="signature" id="signature">
+        <input type="hidden" name="custom_data" id="custom_data">
+    </form>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script>
+        // Shopier API bilgileri
+        const SHOPIER_API_KEY = 'ba946ce45c717d982cc6decbcb616bb2';
+        const SHOPIER_API_SECRET = '8a186b6f15655c57c65ec415ae121e69';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Test butonuna tıklandığında
+            document.getElementById('testButton').addEventListener('click', () => {
+                startTest();
+            });
+            
+            // Plan seçimi değiştiğinde
+            document.getElementById('planSelect').addEventListener('change', (e) => {
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                logMessage(`Plan değiştirildi: ${selectedOption.text}`);
+            });
+        });
+        
+        // Test işlemini başlat
+        function startTest() {
+            // Form alanlarını al
+            const restaurantId = document.getElementById('restaurantId').value;
+            const planSelect = document.getElementById('planSelect');
+            const selectedOption = planSelect.options[planSelect.selectedIndex];
+            const planId = planSelect.value;
+            const planPrice = selectedOption.getAttribute('data-price');
+            const planTables = selectedOption.getAttribute('data-tables');
+            const buyerName = document.getElementById('buyerName').value;
+            const buyerSurname = document.getElementById('buyerSurname').value;
+            const buyerEmail = document.getElementById('buyerEmail').value;
+            const buyerPhone = document.getElementById('buyerPhone').value;
+            
+            // Log bilgilerini göster
+            clearLogs();
+            logMessage('Shopier Ödeme Testi Başlatılıyor...');
+            logMessage(`Restoran ID: ${restaurantId}`);
+            logMessage(`Plan: ${planId} (${planTables} masa - ${planPrice} TL)`);
+            logMessage(`Müşteri: ${buyerName} ${buyerSurname}`);
+            logMessage(`İletişim: ${buyerEmail} / ${buyerPhone}`);
+            
+            // Sipariş numarası oluştur
+            const orderId = 'QR' + Date.now();
+            logMessage(`Sipariş ID: ${orderId}`);
+            
+            // Rastgele sayı oluştur
+            const randomNumber = Math.floor(100000 + Math.random() * 900000);
+            logMessage(`Rastgele Sayı: ${randomNumber}`);
+            
+            // Özel veriyi ayarla
+            const customData = JSON.stringify({
+                restaurant_id: restaurantId,
+                plan_id: planId,
+                plan_tables: planTables
+            });
+            logMessage(`Özel Veri: ${customData}`);
+            
+            // İmza oluştur
+            const data = randomNumber + orderId + planPrice + '0'; // 0 = TL para birimi
+            const signature = CryptoJS.HmacSHA256(data, SHOPIER_API_SECRET);
+            const signatureBase64 = CryptoJS.enc.Base64.stringify(signature);
+            logMessage(`İmza Verisi: ${data}`);
+            logMessage(`İmza: ${signatureBase64}`);
+            
+            // Form alanlarını doldur
+            document.getElementById('platform_order_id').value = orderId;
+            document.getElementById('product_name').value = `QR Garson Çağırma - ${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`;
+            document.getElementById('form_buyer_name').value = buyerName;
+            document.getElementById('form_buyer_surname').value = buyerSurname;
+            document.getElementById('form_buyer_email').value = buyerEmail;
+            document.getElementById('form_buyer_phone').value = buyerPhone;
+            document.getElementById('total_order_value').value = planPrice;
+            document.getElementById('random_nr').value = randomNumber;
+            document.getElementById('signature').value = signatureBase64;
+            document.getElementById('custom_data').value = customData;
+            
+            logMessage('Form alanları dolduruldu.');
+            logMessage('Shopier ödeme sayfasına yönlendiriliyor...');
+            
+            // 2 saniye bekle ve formu gönder
+            setTimeout(() => {
+                document.getElementById('shopierForm').submit();
+            }, 2000);
+        }
+        
+        // Log mesajı ekle
+        function logMessage(message) {
+            const resultsDiv = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            resultsDiv.innerHTML += `<p class="mb-1">[${timestamp}] ${message}</p>`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        // Logları temizle
+        function clearLogs() {
+            document.getElementById('testResults').innerHTML = '';
+        }
+    </script>
+</body>
+</html> 

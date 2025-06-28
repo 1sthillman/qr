@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ödeme İşlemi</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#FF6B35',secondary:'#3A86FF'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="container mx-auto px-4 py-12 max-w-lg">
+        <div id="loadingSection" class="text-center">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-primary mb-4"></div>
+            <p class="text-gray-700">Ödeme işlemi doğrulanıyor...</p>
+        </div>
+        
+        <div id="successSection" class="bg-white rounded-lg shadow-md p-8 text-center hidden">
+            <div class="text-green-500 text-6xl mb-4">
+                <i class="ri-checkbox-circle-line"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Ödeme Başarılı</h1>
+            <p class="text-gray-600 mb-6">Aboneliğiniz başarıyla aktifleştirildi.</p>
+            
+            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">Restoran ID:</span>
+                    <span id="restaurantId" class="font-medium"></span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">Plan:</span>
+                    <span id="planName" class="font-medium"></span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">Masa Limiti:</span>
+                    <span id="tableLimit" class="font-medium"></span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">Ödenen Tutar:</span>
+                    <span id="paidAmount" class="font-medium"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Bitiş Tarihi:</span>
+                    <span id="expiryDate" class="font-medium"></span>
+                </div>
+            </div>
+            
+            <div class="flex flex-col space-y-3">
+                <a href="qr-generator.html" class="bg-primary text-white py-3 px-4 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                    <i class="ri-qr-code-line mr-2"></i> QR Kod Oluşturucuya Git
+                </a>
+                <a href="index.html" class="bg-secondary text-white py-3 px-4 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                    <i class="ri-home-line mr-2"></i> Ana Sayfaya Dön
+                </a>
+            </div>
+        </div>
+        
+        <div id="errorSection" class="bg-white rounded-lg shadow-md p-8 text-center hidden">
+            <div class="text-red-500 text-6xl mb-4">
+                <i class="ri-error-warning-line"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Ödeme İşleminde Hata</h1>
+            <p id="errorMessage" class="text-gray-600 mb-6">Ödeme işlemi sırasında bir hata oluştu.</p>
+            
+            <div class="flex flex-col space-y-3">
+                <a href="payment.html" class="bg-primary text-white py-3 px-4 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                    <i class="ri-arrow-go-back-line mr-2"></i> Ödeme Sayfasına Dön
+                </a>
+                <a href="index.html" class="bg-secondary text-white py-3 px-4 rounded-button font-medium hover:bg-opacity-90 transition-all">
+                    <i class="ri-home-line mr-2"></i> Ana Sayfaya Dön
+                </a>
+            </div>
+        </div>
+        
+        <div id="debugSection" class="bg-white rounded-lg shadow-md p-6 mt-8 hidden">
+            <h2 class="text-lg font-semibold mb-4">Debug Bilgileri</h2>
+            <div id="debugInfo" class="bg-gray-50 p-4 rounded-md text-sm font-mono h-64 overflow-auto">
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script>
+        // Supabase bağlantı bilgileri
+        const SUPABASE_URL = 'https://wihdzkvgttfwsiijxidy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpaGR6a3ZndHRmd3NpaWp4aWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2MzA0MjIsImV4cCI6MjA2NjIwNjQyMn0.Cpn6y7ybyLA3uL-bjvsxPKoIw-J7I6eTE5cPGnBjOo4';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Shopier API bilgileri
+        const SHOPIER_API_SECRET = '8a186b6f15655c57c65ec415ae121e69';
+        
+        // Debug modu (geliştirme aşamasında true, canlıya alırken false yapın)
+        const DEBUG_MODE = true;
+        
+        // Test modu (geliştirme aşamasında true, canlıya alırken false yapın)
+        const TEST_MODE = true;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Debug modunu kontrol et
+            if (DEBUG_MODE) {
+                document.getElementById('debugSection').classList.remove('hidden');
+            }
+            
+            // URL'den ödeme parametrelerini al
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Tüm parametreleri debug için logla
+            if (DEBUG_MODE) {
+                logDebug('URL Parametreleri:');
+                for (const [key, value] of urlParams.entries()) {
+                    logDebug(`${key}: ${value}`);
+                }
+            }
+            
+            // Shopier'den gelen parametreler
+            const status = urlParams.get('status');
+            const paymentId = urlParams.get('payment_id');
+            const platformOrderId = urlParams.get('platform_order_id');
+            const randomNr = urlParams.get('random_nr');
+            const signature = urlParams.get('signature');
+            const customData = urlParams.get('custom_data');
+            
+            // Test için varsayılan değerler
+            const testStatus = 'success';
+            const testPaymentId = generateRandomId();
+            const testCustomData = JSON.stringify({
+                restaurant_id: 'TEST123',
+                plan_id: 'small',
+                plan_tables: 10
+            });
+            
+            // Kullanılacak değerleri belirle
+            const finalStatus = TEST_MODE ? testStatus : status;
+            const finalPaymentId = TEST_MODE ? testPaymentId : paymentId;
+            const finalCustomData = TEST_MODE ? testCustomData : customData;
+            
+            if (DEBUG_MODE) {
+                logDebug('İşlenen Parametreler:');
+                logDebug(`Status: ${finalStatus}`);
+                logDebug(`Payment ID: ${finalPaymentId}`);
+                logDebug(`Custom Data: ${finalCustomData}`);
+            }
+            
+            if (!TEST_MODE && (!finalStatus || !finalPaymentId || !finalCustomData)) {
+                showError('Eksik ödeme bilgileri. Lütfen daha sonra tekrar deneyin.');
+                return;
+            }
+            
+            // Custom data'yı parse et
+            let parsedData;
+            try {
+                parsedData = JSON.parse(finalCustomData);
+                
+                if (DEBUG_MODE) {
+                    logDebug('Parsed Custom Data:');
+                    logDebug(JSON.stringify(parsedData, null, 2));
+                }
+            } catch (error) {
+                console.error('Custom data parse hatası:', error);
+                showError('Ödeme verileri işlenemedi. Lütfen daha sonra tekrar deneyin.');
+                return;
+            }
+            
+            const { restaurant_id, plan_id, plan_tables } = parsedData;
+            
+            if (!restaurant_id || !plan_id) {
+                showError('Eksik ödeme bilgileri. Lütfen daha sonra tekrar deneyin.');
+                return;
+            }
+            
+            // İmza doğrulama (gerçek uygulamada)
+            if (!TEST_MODE && signature) {
+                try {
+                    // Shopier dokümantasyonuna göre imza doğrulama
+                    // Not: Gerçek imza doğrulama yöntemi Shopier'in dokümantasyonuna göre değişebilir
+                    const data = randomNr + platformOrderId;
+                    const expectedSignature = CryptoJS.HmacSHA256(data, SHOPIER_API_SECRET);
+                    const expectedSignatureBase64 = CryptoJS.enc.Base64.stringify(expectedSignature);
+                    
+                    if (DEBUG_MODE) {
+                        logDebug('İmza Doğrulama:');
+                        logDebug(`Data: ${data}`);
+                        logDebug(`Beklenen İmza: ${expectedSignatureBase64}`);
+                        logDebug(`Gelen İmza: ${signature}`);
+                    }
+                    
+                    if (signature !== expectedSignatureBase64) {
+                        showError('Güvenlik hatası: İmza doğrulanamadı.');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('İmza doğrulama hatası:', error);
+                    if (DEBUG_MODE) {
+                        logDebug(`İmza Doğrulama Hatası: ${error.message}`);
+                    }
+                }
+            }
+            
+            // Ödeme durumunu kontrol et
+            if (finalStatus === 'success' || TEST_MODE) {
+                // Ödeme başarılı, aboneliği güncelle
+                updateSubscription(restaurant_id, plan_id, parseInt(plan_tables), finalPaymentId);
+            } else {
+                // Ödeme başarısız
+                showError('Ödeme işlemi başarısız oldu. Lütfen daha sonra tekrar deneyin.');
+            }
+        });
+        
+        // Aboneliği güncelle
+        async function updateSubscription(restaurantId, planId, tableLimit, paymentId) {
+            try {
+                if (DEBUG_MODE) {
+                    logDebug('Abonelik Güncelleme:');
+                    logDebug(`Restoran ID: ${restaurantId}`);
+                    logDebug(`Plan ID: ${planId}`);
+                    logDebug(`Masa Limiti: ${tableLimit}`);
+                    logDebug(`Ödeme ID: ${paymentId}`);
+                }
+                
+                // Planı al
+                const { data: planData, error: planError } = await supabase
+                    .from('subscription_plans')
+                    .select('*')
+                    .eq('name', getPlanName(planId))
+                    .single();
+                    
+                if (planError) {
+                    if (DEBUG_MODE) {
+                        logDebug(`Plan Veri Hatası: ${planError.message}`);
+                    }
+                    throw planError;
+                }
+                
+                if (!planData && !TEST_MODE) {
+                    showError('Abonelik planı bulunamadı.');
+                    return;
+                }
+                
+                // Test modu için varsayılan plan verileri
+                const finalPlanData = planData || {
+                    id: 1,
+                    name: getPlanName(planId),
+                    price_monthly: getPrice(planId)
+                };
+                
+                if (DEBUG_MODE) {
+                    logDebug('Plan Verileri:');
+                    logDebug(JSON.stringify(finalPlanData, null, 2));
+                }
+                
+                // Abonelik bitiş tarihini hesapla (1 ay sonrası)
+                const startDate = new Date();
+                const endDate = new Date();
+                endDate.setMonth(endDate.getMonth() + 1);
+                
+                if (DEBUG_MODE) {
+                    logDebug(`Başlangıç Tarihi: ${startDate.toISOString()}`);
+                    logDebug(`Bitiş Tarihi: ${endDate.toISOString()}`);
+                }
+                
+                // Abonelik geçmişi oluştur
+                if (!TEST_MODE) {
+                    const { error: historyError } = await supabase
+                        .from('subscription_history')
+                        .insert({
+                            restaurant_id: restaurantId,
+                            plan_id: finalPlanData.id,
+                            payment_id: paymentId,
+                            payment_amount: finalPlanData.price_monthly,
+                            start_date: startDate.toISOString(),
+                            end_date: endDate.toISOString(),
+                            status: 'active'
+                        });
+                        
+                    if (historyError) {
+                        if (DEBUG_MODE) {
+                            logDebug(`Abonelik Geçmişi Hatası: ${historyError.message}`);
+                        }
+                        throw historyError;
+                    }
+                    
+                    // Restoran aboneliğini güncelle
+                    const { error: updateError } = await supabase
+                        .from('restaurants')
+                        .update({
+                            plan_type: 'paid',
+                            plan_expiry_date: endDate.toISOString(),
+                            max_tables: tableLimit,
+                            is_active: true
+                        })
+                        .eq('id', restaurantId);
+                        
+                    if (updateError) {
+                        if (DEBUG_MODE) {
+                            logDebug(`Restoran Güncelleme Hatası: ${updateError.message}`);
+                        }
+                        throw updateError;
+                    }
+                }
+                
+                // Başarılı mesajını göster
+                showSuccess(restaurantId, planId, tableLimit, finalPlanData.price_monthly, endDate);
+                
+            } catch (error) {
+                console.error('Abonelik güncelleme hatası:', error);
+                if (DEBUG_MODE) {
+                    logDebug(`Abonelik Güncelleme Hatası: ${error.message}`);
+                }
+                showError('Abonelik güncellenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+            }
+        }
+        
+        // Plan ID'sine göre plan adını döndür
+        function getPlanName(planId) {
+            switch (planId) {
+                case 'small': return 'Küçük';
+                case 'medium': return 'Orta';
+                case 'large': return 'Büyük';
+                case 'enterprise': return 'Kurumsal';
+                default: return 'Bilinmiyor';
+            }
+        }
+        
+        // Plan ID'sine göre fiyatı döndür (test modu için)
+        function getPrice(planId) {
+            switch (planId) {
+                case 'small': return 250;
+                case 'medium': return 450;
+                case 'large': return 800;
+                case 'enterprise': return 1500;
+                default: return 0;
+            }
+        }
+        
+        // Başarılı mesajını göster
+        function showSuccess(restaurantId, planId, tableLimit, amount, expiryDate) {
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('successSection').classList.remove('hidden');
+            
+            document.getElementById('restaurantId').textContent = restaurantId;
+            document.getElementById('planName').textContent = getPlanName(planId);
+            document.getElementById('tableLimit').textContent = `${tableLimit} masa`;
+            document.getElementById('paidAmount').textContent = `₺${amount}`;
+            document.getElementById('expiryDate').textContent = new Date(expiryDate).toLocaleDateString('tr-TR');
+            
+            if (DEBUG_MODE) {
+                logDebug('Başarılı Mesajı Gösterildi:');
+                logDebug(`Restoran ID: ${restaurantId}`);
+                logDebug(`Plan: ${getPlanName(planId)}`);
+                logDebug(`Masa Limiti: ${tableLimit}`);
+                logDebug(`Tutar: ₺${amount}`);
+                logDebug(`Bitiş Tarihi: ${new Date(expiryDate).toLocaleDateString('tr-TR')}`);
+            }
+        }
+        
+        // Hata mesajını göster
+        function showError(message) {
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = message;
+            
+            if (DEBUG_MODE) {
+                logDebug(`Hata Mesajı Gösterildi: ${message}`);
+            }
+        }
+        
+        // Debug bilgisi ekle
+        function logDebug(message) {
+            if (!DEBUG_MODE) return;
+            
+            const debugDiv = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `<p class="mb-1">[${timestamp}] ${message}</p>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
+        // Test için rastgele ID oluştur
+        function generateRandomId() {
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        }
+    </script>
+</body>
+</html> 
