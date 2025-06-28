@@ -8,6 +8,7 @@
     <script>tailwind.config={theme:{extend:{colors:{primary:'#FF6B35',secondary:'#3A86FF'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="container mx-auto px-4 py-12 max-w-6xl">
@@ -266,9 +267,21 @@
         </div>
     </div>
     
+    <!-- Debug Bilgileri (Geliştirme aşamasında) -->
+    <div id="debugSection" class="container mx-auto px-4 py-6 max-w-6xl">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Debug Bilgileri</h2>
+            <div id="debugInfo" class="bg-gray-50 p-4 rounded-md text-sm font-mono h-64 overflow-auto">
+                <p class="text-gray-500">İşlem başlatıldığında debug bilgileri burada görüntülenecektir.</p>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script>
+        // Debug modu (geliştirme aşamasında true, canlıya alırken false yapın)
+        const DEBUG_MODE = true;
+        
         // Supabase bağlantı bilgileri
         const SUPABASE_URL = 'https://wihdzkvgttfwsiijxidy.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpaGR6a3ZndHRmd3NpaWp4aWR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2MzA0MjIsImV4cCI6MjA2NjIwNjQyMn0.Cpn6y7ybyLA3uL-bjvsxPKoIw-J7I6eTE5cPGnBjOo4';
@@ -280,6 +293,20 @@
         const SHOPIER_CALLBACK_URL = window.location.origin + '/callback.html';
         
         document.addEventListener('DOMContentLoaded', () => {
+            // Debug modunu kontrol et
+            if (DEBUG_MODE) {
+                document.getElementById('debugSection').style.display = 'block';
+                logDebug('Sayfa yüklendi. Debug modu aktif.');
+            } else {
+                document.getElementById('debugSection').style.display = 'none';
+            }
+            
+            // GitHub Pages'te çalışıyorsa test verilerini doldur
+            if (window.location.hostname.includes('github.io')) {
+                logDebug('GitHub Pages ortamı tespit edildi. Test verileri doldurulacak.');
+                fillTestData();
+            }
+            
             // URL'den restoran ID'sini al
             const urlParams = new URLSearchParams(window.location.search);
             const restaurantId = urlParams.get('restaurant_id');
@@ -379,40 +406,142 @@
         
         // Ödeme işlemi
         function processPayment() {
-            const restaurantId = document.getElementById('restaurantId').value;
-            const planId = document.getElementById('planId').value;
-            const planPrice = document.getElementById('planPrice').value;
-            const planTables = document.getElementById('planTables').value;
+            try {
+                const restaurantId = document.getElementById('restaurantId').value;
+                const planId = document.getElementById('planId').value;
+                const planPrice = document.getElementById('planPrice').value;
+                const planTables = document.getElementById('planTables').value;
+                
+                if (!restaurantId || !planId) {
+                    logDebug('Hata: Eksik bilgiler. Plan veya restoran ID bulunamadı.');
+                    alert('Lütfen bir plan seçin ve restoran bilgilerini girin.');
+                    return;
+                }
+                
+                // Buyer bilgilerini al
+                const buyerName = document.getElementById('buyer_name').value || 'Test';
+                const buyerSurname = document.getElementById('buyer_surname').value || 'Kullanıcı';
+                const buyerEmail = document.getElementById('buyer_email').value || 'test@example.com';
+                const buyerPhone = document.getElementById('buyer_phone').value || '5551234567';
+                
+                // Debug bilgilerini göster
+                if (DEBUG_MODE) {
+                    logDebug('Ödeme İşlemi Başlatılıyor...');
+                    logDebug(`Restoran ID: ${restaurantId}`);
+                    logDebug(`Plan: ${planId} (${planTables} masa - ${planPrice} TL)`);
+                    logDebug(`Müşteri: ${buyerName} ${buyerSurname}`);
+                    logDebug(`İletişim: ${buyerEmail} / ${buyerPhone}`);
+                }
+                
+                // Sipariş numarası oluştur
+                const orderId = 'QR' + Date.now();
+                
+                // Rastgele sayı oluştur
+                const randomNumber = Math.floor(100000 + Math.random() * 900000);
+                
+                // Özel veriyi ayarla
+                const customData = JSON.stringify({
+                    restaurant_id: restaurantId,
+                    plan_id: planId,
+                    plan_tables: planTables
+                });
+                
+                if (DEBUG_MODE) {
+                    logDebug(`Sipariş ID: ${orderId}`);
+                    logDebug(`Rastgele Sayı: ${randomNumber}`);
+                    logDebug(`Özel Veri: ${customData}`);
+                }
+                
+                // İmza oluştur
+                const data = randomNumber + orderId + planPrice + '0'; // 0 = TL para birimi
+                
+                if (DEBUG_MODE) {
+                    logDebug(`İmza Verisi: ${data}`);
+                    logDebug(`API Secret: ${SHOPIER_API_SECRET.substring(0, 5)}...`);
+                }
+                
+                // CryptoJS kullanarak imza oluştur
+                const signature = CryptoJS.HmacSHA256(data, SHOPIER_API_SECRET);
+                const signatureBase64 = CryptoJS.enc.Base64.stringify(signature);
+                
+                if (DEBUG_MODE) {
+                    logDebug(`İmza: ${signatureBase64}`);
+                }
+                
+                // Form alanlarını doldur
+                document.getElementById('platform_order_id').value = orderId;
+                document.getElementById('product_name').value = `QR Garson Çağırma - ${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`;
+                document.getElementById('buyer_name').value = buyerName;
+                document.getElementById('buyer_surname').value = buyerSurname;
+                document.getElementById('buyer_email').value = buyerEmail;
+                document.getElementById('buyer_phone').value = buyerPhone;
+                document.getElementById('total_order_value').value = planPrice;
+                document.getElementById('random_nr').value = randomNumber;
+                document.getElementById('signature').value = signatureBase64;
+                document.getElementById('custom_data').value = customData;
+                
+                // Callback URL'ini ayarla
+                let callbackUrl = window.location.origin;
+                if (callbackUrl.includes('github.io')) {
+                    // GitHub Pages için düzeltme
+                    callbackUrl += '/qr/callback.html';
+                } else {
+                    callbackUrl += '/callback.html';
+                }
+                
+                // Callback input'u kontrol et veya oluştur
+                let callbackInput = document.querySelector('input[name="callback"]');
+                if (!callbackInput) {
+                    callbackInput = document.createElement('input');
+                    callbackInput.type = 'hidden';
+                    callbackInput.name = 'callback';
+                    document.getElementById('shopierForm').appendChild(callbackInput);
+                }
+                callbackInput.value = callbackUrl;
+                
+                if (DEBUG_MODE) {
+                    logDebug(`Callback URL: ${callbackUrl}`);
+                    logDebug('Form alanları dolduruldu.');
+                    logDebug('Shopier ödeme sayfasına yönlendiriliyor...');
+                }
+                
+                // Formu gönder
+                document.getElementById('shopierForm').submit();
+                
+            } catch (error) {
+                console.error('Ödeme işlemi hatası:', error);
+                logDebug(`HATA: ${error.message}`);
+                alert('Ödeme işlemi başlatılırken bir hata oluştu. Lütfen tekrar deneyin.');
+            }
+        }
+        
+        // Debug mesajı ekle
+        function logDebug(message) {
+            if (!DEBUG_MODE) return;
             
-            if (!restaurantId || !planId) {
-                alert('Lütfen bir plan seçin ve restoran bilgilerini girin.');
-                return;
+            const debugInfo = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugInfo.innerHTML += `<p class="mb-1">[${timestamp}] ${message}</p>`;
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+            
+            console.log(`[DEBUG] ${message}`);
+        }
+        
+        // Test verilerini doldur
+        function fillTestData() {
+            // Restoran ID'si
+            if (!document.getElementById('restaurantId').value) {
+                document.getElementById('restaurantId').value = 'TEST_' + Date.now().toString().substring(8);
+                logDebug('Test restoran ID oluşturuldu: ' + document.getElementById('restaurantId').value);
             }
             
-            // Sipariş numarası oluştur
-            const orderId = 'QR' + Date.now();
-            document.getElementById('platform_order_id').value = orderId;
+            // Kullanıcı bilgileri
+            document.getElementById('buyer_name').value = 'Test';
+            document.getElementById('buyer_surname').value = 'Kullanıcı';
+            document.getElementById('buyer_email').value = 'test@example.com';
+            document.getElementById('buyer_phone').value = '5551234567';
             
-            // Rastgele sayı oluştur
-            const randomNumber = Math.floor(100000 + Math.random() * 900000);
-            document.getElementById('random_nr').value = randomNumber;
-            
-            // Özel veriyi ayarla
-            const customData = JSON.stringify({
-                restaurant_id: restaurantId,
-                plan_id: planId,
-                plan_tables: planTables
-            });
-            document.getElementById('custom_data').value = customData;
-            
-            // İmza oluştur
-            const data = randomNumber + orderId + planPrice + '0'; // 0 = TL para birimi
-            const signature = CryptoJS.HmacSHA256(data, SHOPIER_API_SECRET);
-            const signatureBase64 = CryptoJS.enc.Base64.stringify(signature);
-            document.getElementById('signature').value = signatureBase64;
-            
-            // Formu gönder
-            document.getElementById('shopierForm').submit();
+            logDebug('Test kullanıcı bilgileri dolduruldu.');
         }
     </script>
 </body>
